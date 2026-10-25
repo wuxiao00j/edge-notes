@@ -1,0 +1,26 @@
+# Xcode / build
+build/
+DerivedData/
+dist/*.app
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local / test artifacts
+_testshots/
+*.log
+.idea/
+.vscode/
+
+# Keep packaged zip out of source tree if regenerated locally
+# (release assets uploaded via GitHub Releases)

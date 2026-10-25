@@ -1,0 +1,407 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		06E323DF307AD36D96B0D563 /* NoteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */; };
+		14AE61D34EDA4E5B416520F3 /* NoteBodyRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */; };
+		153726F147F684A45D663F5B /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 869A8E8071FAB91C04EC05DA /* InfoPlist.strings */; };
+		2238CA799A31A26662CCFD21 /* MarkdownTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF06525E7B1DAED548037070 /* MarkdownTextView.swift */; };
+		2BD70FD7E366DE28C13F6C21 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 83D8F7F98083ADB2970A21DF /* Assets.xcassets */; };
+		2D49BE219264D65B5A8926FE /* ReminderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */; };
+		38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D501332BF4D2276C8649DD5F /* ContentView.swift */; };
+		414AF6EFFBAFB416C9A203FA /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */; };
+		4A6E5AFC6D015CB2D8AC0660 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 4AE65A150BECB382C555FE36 /* Localizable.strings */; };
+		652618A668A584FE7C732CDB /* SelectionCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */; };
+		6540821F4746B6357EDECD0A /* GlassChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */; };
+		8761FBE50F05FAFD1607371E /* HotKeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */; };
+		88E171736BF715A924708995 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69A5704D1CEF62087CD9F33 /* AppSettings.swift */; };
+		A31C0EB1132B983476204F56 /* StickyChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */; };
+		A53BCDE2928B703AB54C72E5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616053B9B8ADF513796189C6 /* Note.swift */; };
+		B0FF348A7AACFE792E40297A /* NoteWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */; };
+		D6995481C52837A4D4A491CC /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7460BAFECA654532B30EBE51 /* ChecklistView.swift */; };
+		E9C55BB49942BEAF81EF5637 /* EdgePanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */; };
+		FDE753E86D4E5A3733E282D7 /* EdgeNotesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28890B7636D0E35CED72261A /* EdgeNotesApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteBodyRendering.swift; sourceTree = "<group>"; };
+		122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyChrome.swift; sourceTree = "<group>"; };
+		28890B7636D0E35CED72261A /* EdgeNotesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNotesApp.swift; sourceTree = "<group>"; };
+		2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionCapture.swift; sourceTree = "<group>"; };
+		2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePanelController.swift; sourceTree = "<group>"; };
+		3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManager.swift; sourceTree = "<group>"; };
+		616053B9B8ADF513796189C6 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
+		69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassChrome.swift; sourceTree = "<group>"; };
+		6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderManager.swift; sourceTree = "<group>"; };
+		7460BAFECA654532B30EBE51 /* ChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistView.swift; sourceTree = "<group>"; };
+		7ACA902DEB8A0E80C9876C8E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStore.swift; sourceTree = "<group>"; };
+		83D8F7F98083ADB2970A21DF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AE14BF418185187B817F44F4 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		BF06525E7B1DAED548037070 /* MarkdownTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextView.swift; sourceTree = "<group>"; };
+		C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyRecorder.swift; sourceTree = "<group>"; };
+		D00621EAA3C328DF25DBB879 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		D501332BF4D2276C8649DD5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		D57F02F0CFDA021BD868DA88 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		DF78764C54FD9F6A0376C54E /* EdgeNotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdgeNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F69A5704D1CEF62087CD9F33 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		809202A0D238080D2BFF4EB1 = {
+			isa = PBXGroup;
+			children = (
+				DCFFD8291FC787E03943AA46 /* EdgeNotes */,
+				8E1A0C367FFC15E0293A9F83 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8E1A0C367FFC15E0293A9F83 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DF78764C54FD9F6A0376C54E /* EdgeNotes.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DCFFD8291FC787E03943AA46 /* EdgeNotes */ = {
+			isa = PBXGroup;
+			children = (
+				F69A5704D1CEF62087CD9F33 /* AppSettings.swift */,
+				83D8F7F98083ADB2970A21DF /* Assets.xcassets */,
+				7460BAFECA654532B30EBE51 /* ChecklistView.swift */,
+				D501332BF4D2276C8649DD5F /* ContentView.swift */,
+				28890B7636D0E35CED72261A /* EdgeNotesApp.swift */,
+				2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */,
+				69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */,
+				F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */,
+				C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */,
+				BF06525E7B1DAED548037070 /* MarkdownTextView.swift */,
+				616053B9B8ADF513796189C6 /* Note.swift */,
+				0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */,
+				7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */,
+				3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */,
+				6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */,
+				2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */,
+				122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */,
+				869A8E8071FAB91C04EC05DA /* InfoPlist.strings */,
+				4AE65A150BECB382C555FE36 /* Localizable.strings */,
+			);
+			path = EdgeNotes;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EBCD67A5FEFA751C95CBDBBD /* EdgeNotes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C68A950814CB92E574B34A51 /* Build configuration list for PBXNativeTarget "EdgeNotes" */;
+			buildPhases = (
+				81B2B82B474E4E982CC55846 /* Sources */,
+				A175AE29889D9BD1ED465BA7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EdgeNotes;
+			packageProductDependencies = (
+			);
+			productName = EdgeNotes;
+			productReference = DF78764C54FD9F6A0376C54E /* EdgeNotes.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5394B7570B9468C0A82FD053 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 1F5DDB5BD85E5CFAB171344B /* Build configuration list for PBXProject "EdgeNotes" */;
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+				"zh-Hans",
+			);
+			mainGroup = 809202A0D238080D2BFF4EB1;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8E1A0C367FFC15E0293A9F83 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EBCD67A5FEFA751C95CBDBBD /* EdgeNotes */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A175AE29889D9BD1ED465BA7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2BD70FD7E366DE28C13F6C21 /* Assets.xcassets in Resources */,
+				153726F147F684A45D663F5B /* InfoPlist.strings in Resources */,
+				4A6E5AFC6D015CB2D8AC0660 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		81B2B82B474E4E982CC55846 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				88E171736BF715A924708995 /* AppSettings.swift in Sources */,
+				D6995481C52837A4D4A491CC /* ChecklistView.swift in Sources */,
+				38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */,
+				FDE753E86D4E5A3733E282D7 /* EdgeNotesApp.swift in Sources */,
+				E9C55BB49942BEAF81EF5637 /* EdgePanelController.swift in Sources */,
+				6540821F4746B6357EDECD0A /* GlassChrome.swift in Sources */,
+				414AF6EFFBAFB416C9A203FA /* HotKeyManager.swift in Sources */,
+				8761FBE50F05FAFD1607371E /* HotKeyRecorder.swift in Sources */,
+				2238CA799A31A26662CCFD21 /* MarkdownTextView.swift in Sources */,
+				A53BCDE2928B703AB54C72E5 /* Note.swift in Sources */,
+				14AE61D34EDA4E5B416520F3 /* NoteBodyRendering.swift in Sources */,
+				06E323DF307AD36D96B0D563 /* NoteStore.swift in Sources */,
+				B0FF348A7AACFE792E40297A /* NoteWindowManager.swift in Sources */,
+				2D49BE219264D65B5A8926FE /* ReminderManager.swift in Sources */,
+				652618A668A584FE7C732CDB /* SelectionCapture.swift in Sources */,
+				A31C0EB1132B983476204F56 /* StickyChrome.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		4AE65A150BECB382C555FE36 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D57F02F0CFDA021BD868DA88 /* en */,
+				7ACA902DEB8A0E80C9876C8E /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		869A8E8071FAB91C04EC05DA /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				AE14BF418185187B817F44F4 /* en */,
+				D00621EAA3C328DF25DBB879 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		2442DD88C20459BBB6EA3688 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 4;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleAllowMixedLocalizations = YES;
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
+				INFOPLIST_KEY_CFBundleDisplayName = "贴边便签";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.4.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barry.EdgeNotes;
+				PRODUCT_NAME = EdgeNotes;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		377FDA19280DE5B1AF58A5A7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 4;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleAllowMixedLocalizations = YES;
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
+				INFOPLIST_KEY_CFBundleDisplayName = "贴边便签";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.4.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barry.EdgeNotes;
+				PRODUCT_NAME = EdgeNotes;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		68C662CA7BA2C2D0929C26CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		92BCF78C8873A0D63BE83F72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F5DDB5BD85E5CFAB171344B /* Build configuration list for PBXProject "EdgeNotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				377FDA19280DE5B1AF58A5A7 /* Debug */,
+				2442DD88C20459BBB6EA3688 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C68A950814CB92E574B34A51 /* Build configuration list for PBXNativeTarget "EdgeNotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				68C662CA7BA2C2D0929C26CE /* Debug */,
+				92BCF78C8873A0D63BE83F72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5394B7570B9468C0A82FD053 /* Project object */;
+}
