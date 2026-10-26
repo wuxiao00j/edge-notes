@@ -17,9 +17,17 @@ final class NoteStore: ObservableObject {
     private let dbURL: URL
     private let crashURL: URL
     private let backupURL: URL
+    private let backupsDir: URL
     private var saveTask: Task<Void, Never>?
-    private var versionTask: Task<Void, Never>?
+    private var versionTasks: [UUID: Task<Void, Never>] = [:]
     private var lastVersionSnapshot: [UUID: String] = [:]
+    /// 读盘/写盘在后台串行队列上做，避免打字时卡主线程
+    private let ioQueue = DispatchQueue(label: "EdgeNotes.persist", qos: .utility)
+    /// 数据文件存在但无法解析且没有可用备份：不再写盘，避免覆盖用户数据
+    private(set) var loadFailure: String?
+
+    static let trashRetentionDays = 30
+    static let dailyBackupsKept = 7
 
     init() {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -28,18 +36,32 @@ final class NoteStore: ObservableObject {
         dbURL = dir.appendingPathComponent("notes.json")
         crashURL = dir.appendingPathComponent("crash-recovery.json")
         backupURL = dir.appendingPathComponent("notes.backup.json")
+        backupsDir = dir.appendingPathComponent("Backups", isDirectory: true)
+        try? FileManager.default.createDirectory(at: backupsDir, withIntermediateDirectories: true)
 
-        load()
+        let hadExistingData = load()
         recoverCrashDraftIfNeeded()
 
-        if notes.isEmpty && trash.isEmpty {
+        if loadFailure == nil {
+            // 启动时留一份「上次启动」的快照；放在写盘队列上，排在恢复写入之后，且只复制能解析的文件
+            let dbURL = dbURL, backupURL = backupURL
+            ioQueue.async {
+                guard let data = try? Data(contentsOf: dbURL),
+                      (try? JSONDecoder().decode(NotesDatabase.self, from: data)) != nil else { return }
+                try? data.write(to: backupURL, options: .atomic)
+            }
+            expireOldTrash()
+            AttachmentStore.collectGarbage(referencedBy: allReferencedAttachments())
+        }
+
+        if !hadExistingData && notes.isEmpty && trash.isEmpty {
             let welcome = Note(
                 title: "欢迎使用贴边便签",
                 body: """
-                把鼠标移到屏幕右边缘的细条上，面板会滑出来。
+                把鼠标移到菜单栏正下方停一下，挂绳会放下来；图片、文字、链接拖上去就挂住了。
 
+                • 菜单栏图标或 ⌥⌘N 显示/隐藏这个侧栏
                 • ⌥⌘T 极速新建并开始输入
-                • ⌥⌘N 显示/隐藏侧栏
                 • ⌥⇧⌘V 把剪贴板内容贴成新便签
                 • 点 + 默认在侧栏新建；底部「弹窗」可弹出独立贴纸窗
                 • 拖动整条顶栏可移动；靠近右边缘松手贴回
@@ -124,7 +146,6 @@ final class NoteStore: ObservableObject {
         // 不在数组里手动置顶；列表按 updatedAt 排序
         scheduleSave()
         if bumpModified {
-            writeCrashDraft()
             snapshotVersionSoon(noteID: id)
         }
     }
@@ -157,8 +178,77 @@ final class NoteStore: ObservableObject {
         update(id: id) { $0.isCollapsed.toggle() }
     }
 
-    func toggleLocked(id: UUID) {
-        update(id: id) { $0.isLocked.toggle() }
+    func setLocked(id: UUID, _ locked: Bool) {
+        update(id: id, bumpModified: false) { $0.isLocked = locked }
+    }
+
+    // MARK: - Clothesline
+
+    /// 挂在挂绳上的便签（不含归档）
+    var lineNotes: [Note] {
+        notes.filter { $0.onLine && !$0.isArchived }
+    }
+
+    func hangOnLine(id: UUID, at position: Double? = nil) {
+        let pos = position ?? nextLineSlot()
+        update(id: id, bumpModified: false) {
+            $0.onLine = true
+            $0.linePosition = min(1, max(0, pos))
+        }
+    }
+
+    func takeOffLine(id: UUID) {
+        update(id: id, bumpModified: false) {
+            $0.onLine = false
+            $0.linePosition = nil
+        }
+    }
+
+    func setLinePosition(id: UUID, _ position: Double) {
+        update(id: id, bumpModified: false) { $0.linePosition = min(1, max(0, position)) }
+    }
+
+    /// 新建一条直接挂上绳的便签（图片或文字）
+    @discardableResult
+    func addLineNote(body: String, at position: Double? = nil, color: NoteColor = .yellow) -> Note {
+        let note = addNote(body: body, color: color, select: false)
+        hangOnLine(id: note.id, at: position)
+        return note
+    }
+
+    /// 挂一个网址：先用域名当标题，再去抓网页标题替换
+    @discardableResult
+    func addLineLink(_ url: URL, at position: Double? = nil) -> Note {
+        let host = url.host.map { $0.hasPrefix("www.") ? String($0.dropFirst(4)) : $0 } ?? "链接"
+        let note = addLineNote(body: url.absoluteString, at: position, color: .blue)
+        update(id: note.id, bumpModified: false) { $0.title = host }
+        LinkTitleFetcher.fetch(url) { [weak self] title in
+            guard let self, let current = self.note(id: note.id), current.title == host else { return }
+            self.update(id: note.id, bumpModified: false) { $0.title = title }
+        }
+        return note
+    }
+
+    /// 在现有夹子之间找最大的空隙
+    func nextLineSlot() -> Double {
+        let taken = lineNotes.compactMap(\.linePosition).sorted()
+        let bounds = [0.0] + taken + [1.0]
+        var best = (gap: -1.0, mid: 0.5)
+        for i in 0..<(bounds.count - 1) {
+            // 两端只算半个空隙，避免贴边
+            let lo = bounds[i], hi = bounds[i + 1]
+            let edge = (i == 0 || i == bounds.count - 2) && !taken.isEmpty
+            let gap = (hi - lo) * (edge ? 0.5 : 1)
+            if gap > best.gap {
+                let mid: Double
+                if taken.isEmpty { mid = 0.5 }
+                else if i == 0 { mid = max(0.04, hi - 0.12) }
+                else if i == bounds.count - 2 { mid = min(0.96, lo + 0.12) }
+                else { mid = (lo + hi) / 2 }
+                best = (gap, mid)
+            }
+        }
+        return best.mid
     }
 
     func setReminder(id: UUID, at: Date?, repeatDays: Int?) {
@@ -194,12 +284,41 @@ final class NoteStore: ObservableObject {
 
     func purgeTrash(id: UUID) {
         trash.removeAll { $0.note.id == id }
+        versions.removeAll { $0.noteID == id }
         scheduleSave()
+        AttachmentStore.collectGarbage(referencedBy: allReferencedAttachments())
     }
 
     func emptyTrash() {
+        let ids = Set(trash.map(\.note.id))
         trash.removeAll()
+        versions.removeAll { ids.contains($0.noteID) }
         scheduleSave()
+        AttachmentStore.collectGarbage(referencedBy: allReferencedAttachments())
+    }
+
+    /// 回收站超过保留期的条目自动清除
+    private func expireOldTrash() {
+        let cutoff = Date().addingTimeInterval(-Double(Self.trashRetentionDays) * 86400)
+        let expired = Set(trash.filter { $0.deletedAt < cutoff }.map(\.note.id))
+        guard !expired.isEmpty else { return }
+        trash.removeAll { expired.contains($0.note.id) }
+        versions.removeAll { expired.contains($0.noteID) }
+        persistNow(reason: "trash-expire")
+    }
+
+    /// 便签、回收站、历史版本里引用到的附件文件名
+    private func allReferencedAttachments() -> Set<String> {
+        var bodies = notes.map(\.body) + trash.map(\.note.body) + versions.map(\.body)
+        bodies.removeAll { !$0.contains("attachments/") }
+        var names = Set<String>()
+        for body in bodies {
+            let probe = Note(body: body)
+            for path in probe.attachmentPaths {
+                names.insert(String(path.dropFirst("attachments/".count)))
+            }
+        }
+        return names
     }
 
     // MARK: - Versions
@@ -216,10 +335,12 @@ final class NoteStore: ObservableObject {
     }
 
     private func snapshotVersionSoon(noteID: UUID) {
-        versionTask?.cancel()
-        versionTask = Task { [weak self] in
+        // 每条便签各自防抖，切到另一条编辑不会丢掉上一条的快照
+        versionTasks[noteID]?.cancel()
+        versionTasks[noteID] = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 8_000_000_000)
             guard let self, !Task.isCancelled else { return }
+            self.versionTasks[noteID] = nil
             self.snapshotVersionNow(noteID: noteID)
         }
     }
@@ -241,7 +362,7 @@ final class NoteStore: ObservableObject {
             }
         }
         versions = kept
-        persistNow(reason: "version")
+        scheduleSave()
     }
 
     // MARK: - Search jump
@@ -259,52 +380,39 @@ final class NoteStore: ObservableObject {
     func toggleChecklistLine(noteID: UUID, lineIndex: Int) {
         guard let note = note(id: noteID) else { return }
         var lines = note.body.components(separatedBy: "\n")
-        guard lineIndex >= 0, lineIndex < lines.count else { return }
-        let line = lines[lineIndex]
-        if line.contains("- [ ]") {
-            lines[lineIndex] = line.replacingOccurrences(of: "- [ ]", with: "- [x]")
-        } else if line.contains("- [x]") {
-            lines[lineIndex] = line.replacingOccurrences(of: "- [x]", with: "- [ ]")
-        }
+        guard lineIndex >= 0, lineIndex < lines.count, var item = Checklist.parse(lines[lineIndex]) else { return }
+        item.done.toggle()
+        lines[lineIndex] = Checklist.line(item)
         // completed sink to bottom among checklist lines
         update(id: noteID) { $0.body = Self.sinkCompletedChecklists(lines.joined(separator: "\n")) }
     }
 
+    /// 每个连续的待办块内，已完成项沉到块底；空行与其它内容原样保留。
     static func sinkCompletedChecklists(_ body: String) -> String {
-        let lines = body.components(separatedBy: "\n")
-        var head: [String] = []
+        var out: [String] = []
         var open: [String] = []
         var done: [String] = []
-        var tail: [String] = []
-        var inList = false
-        for line in lines {
-            let isOpen = line.contains("- [ ]")
-            let isDone = line.contains("- [x]")
-            if isOpen || isDone {
-                inList = true
-                if isDone { done.append(line) } else { open.append(line) }
-            } else if inList && line.trimmingCharacters(in: .whitespaces).isEmpty {
-                // keep blank inside list zone as separator after reorder
-                continue
-            } else if inList {
-                inList = false
-                head.append(contentsOf: open + done)
-                open = []; done = []
-                tail.append(line)
+        func flush() {
+            out.append(contentsOf: open + done)
+            open = []; done = []
+        }
+        for line in body.components(separatedBy: "\n") {
+            if let item = Checklist.parse(line) {
+                if item.done { done.append(line) } else { open.append(line) }
             } else {
-                head.append(line)
+                flush()
+                out.append(line)
             }
         }
-        if inList {
-            head.append(contentsOf: open + done)
-        }
-        return (head + tail).joined(separator: "\n")
+        flush()
+        return out.joined(separator: "\n")
     }
 
     // MARK: - Export / Backup
 
     func exportNotes(format: ExportFormat, to url: URL) throws {
-        let payload = visibleNotes.isEmpty ? notes : notes
+        // 导出当前列表（受归档/标签/搜索筛选影响）；列表为空时导出全部
+        let payload = visibleNotes.isEmpty ? notes : visibleNotes
         switch format {
         case .json:
             let data = try JSONEncoder().encode(payload)
@@ -328,8 +436,7 @@ final class NoteStore: ObservableObject {
     }
 
     func manualBackup() throws -> URL {
-        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
-        let url = dir.appendingPathComponent("backup-\(stamp).json")
+        let url = dir.appendingPathComponent("backup-\(Self.fileStamp()).json")
         let db = NotesDatabase(notes: notes, trash: trash, versions: versions, schemaVersion: NotesDatabase.currentSchema)
         let data = try JSONEncoder().encode(db)
         try data.write(to: url, options: .atomic)
@@ -340,30 +447,56 @@ final class NoteStore: ObservableObject {
 
     // MARK: - Persistence
 
-    private func load() {
-        // Prefer main DB; migrate legacy [Note] array
-        guard FileManager.default.fileExists(atPath: dbURL.path) else { return }
-        do {
-            let data = try Data(contentsOf: dbURL)
-            if let db = try? JSONDecoder().decode(NotesDatabase.self, from: data) {
-                notes = db.notes.sorted { $0.updatedAt > $1.updatedAt }
-                trash = db.trash
-                versions = db.versions
-            } else if let legacy = try? JSONDecoder().decode([Note].self, from: data) {
-                notes = legacy
-            } else if let legacyLite = try? JSONDecoder().decode([LegacyNote].self, from: data) {
-                notes = legacyLite.map { $0.upgraded }
-            }
-        } catch {
-            NSLog("EdgeNotes: 读取失败 — \(error.localizedDescription)")
-            if FileManager.default.fileExists(atPath: backupURL.path),
-               let data = try? Data(contentsOf: backupURL),
-               let db = try? JSONDecoder().decode(NotesDatabase.self, from: data) {
-                notes = db.notes
-                trash = db.trash
-                versions = db.versions
+    /// - Returns: 数据目录里是否已经有数据文件（有就绝不能用欢迎便签覆盖）
+    @discardableResult
+    private func load() -> Bool {
+        guard FileManager.default.fileExists(atPath: dbURL.path) else { return false }
+        if let db = Self.decode(at: dbURL) {
+            apply(db)
+            return true
+        }
+        // 主文件坏了：先隔离，再依次尝试启动快照与每日备份
+        let stamp = Self.fileStamp()
+        let quarantine = dir.appendingPathComponent("notes.corrupt-\(stamp).json")
+        try? FileManager.default.copyItem(at: dbURL, to: quarantine)
+        NSLog("EdgeNotes: notes.json 无法解析，已另存为 \(quarantine.lastPathComponent)，尝试从备份恢复")
+
+        let dailies = ((try? FileManager.default.contentsOfDirectory(at: backupsDir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }
+        for candidate in [backupURL] + dailies {
+            if let db = Self.decode(at: candidate) {
+                apply(db)
+                NSLog("EdgeNotes: 已从 \(candidate.lastPathComponent) 恢复")
+                persistNow(reason: "restore-from-backup")
+                return true
             }
         }
+        loadFailure = "数据文件无法读取，已另存为 \(quarantine.lastPathComponent)。为避免覆盖，本次不会保存任何改动。"
+        return true
+    }
+
+    private func apply(_ db: NotesDatabase) {
+        notes = db.notes.sorted { $0.updatedAt > $1.updatedAt }
+        trash = db.trash
+        versions = db.versions
+    }
+
+    private static func decode(at url: URL) -> NotesDatabase? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let decoder = JSONDecoder()
+        if let db = try? decoder.decode(NotesDatabase.self, from: data) { return db }
+        if let legacy = try? decoder.decode([Note].self, from: data) {
+            return NotesDatabase(notes: legacy, trash: [], versions: [], schemaVersion: NotesDatabase.currentSchema)
+        }
+        if let lite = try? decoder.decode([LegacyNote].self, from: data) {
+            return NotesDatabase(notes: lite.map(\.upgraded), trash: [], versions: [], schemaVersion: NotesDatabase.currentSchema)
+        }
+        return nil
+    }
+
+    private static func fileStamp() -> String {
+        ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
     }
 
     private struct LegacyNote: Codable {
@@ -380,51 +513,71 @@ final class NoteStore: ObservableObject {
     private func scheduleSave() {
         saveTask?.cancel()
         saveTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 180_000_000)
+            try? await Task.sleep(nanoseconds: 400_000_000)
             guard let self, !Task.isCancelled else { return }
             self.persistNow(reason: "debounce")
         }
     }
 
-    private func writeCrashDraft() {
-        let db = NotesDatabase(notes: notes, trash: trash, versions: versions, schemaVersion: NotesDatabase.currentSchema)
-        if let data = try? JSONEncoder().encode(db) {
-            try? data.write(to: crashURL, options: .atomic)
-        }
-    }
-
+    /// 旧版本每次按键写的崩溃草稿：若比主库新则采用一次，然后删除（新版本不再写它）
     private func recoverCrashDraftIfNeeded() {
         guard FileManager.default.fileExists(atPath: crashURL.path) else { return }
-        // If crash draft is newer than main DB, prefer it
         let crashDate = (try? FileManager.default.attributesOfItem(atPath: crashURL.path)[.modificationDate] as? Date) ?? .distantPast
         let dbDate = (try? FileManager.default.attributesOfItem(atPath: dbURL.path)[.modificationDate] as? Date) ?? .distantPast
-        if crashDate > dbDate, let data = try? Data(contentsOf: crashURL),
-           let db = try? JSONDecoder().decode(NotesDatabase.self, from: data) {
-            notes = db.notes
-            trash = db.trash
-            versions = db.versions
+        if crashDate > dbDate, let db = Self.decode(at: crashURL) {
+            apply(db)
+            loadFailure = nil
             persistNow(reason: "crash-recover")
         }
         try? FileManager.default.removeItem(at: crashURL)
     }
 
-    private func persistNow(reason: String) {
-        do {
-            if FileManager.default.fileExists(atPath: dbURL.path) {
-                try? FileManager.default.removeItem(at: backupURL)
-                try? FileManager.default.copyItem(at: dbURL, to: backupURL)
-            }
-            let db = NotesDatabase(notes: notes, trash: trash, versions: versions, schemaVersion: NotesDatabase.currentSchema)
-            let data = try JSONEncoder().encode(db)
-            try data.write(to: dbURL, options: .atomic)
-            try? FileManager.default.removeItem(at: crashURL)
-        } catch {
-            NSLog("EdgeNotes: 保存失败(\(reason)) — \(error.localizedDescription)")
+    private func persistNow(reason: String, synchronous: Bool = false) {
+        guard loadFailure == nil else {
+            NSLog("EdgeNotes: 跳过保存(\(reason)) — 数据文件读取失败，避免覆盖")
+            return
         }
+        // 值类型快照，编码与写盘放到后台队列
+        let db = NotesDatabase(notes: notes, trash: trash, versions: versions, schemaVersion: NotesDatabase.currentSchema)
+        let dbURL = dbURL, backupsDir = backupsDir
+        let work = {
+            do {
+                Self.rotateDailyBackup(dbURL: dbURL, backupsDir: backupsDir)
+                let data = try JSONEncoder().encode(db)
+                try data.write(to: dbURL, options: .atomic)
+            } catch {
+                NSLog("EdgeNotes: 保存失败(\(reason)) — \(error.localizedDescription)")
+            }
+        }
+        if synchronous { ioQueue.sync(execute: work) } else { ioQueue.async(execute: work) }
+    }
+
+    /// 每天第一次保存前，把当前主库复制成 Backups/notes-YYYY-MM-DD.json，保留最近若干天。
+    nonisolated private static func rotateDailyBackup(dbURL: URL, backupsDir: URL) {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: dbURL.path) else { return }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        let today = backupsDir.appendingPathComponent("notes-\(f.string(from: Date())).json")
+        guard !fm.fileExists(atPath: today.path) else { return }
+        // 只备份能解析的文件，避免把坏数据轮换进备份
+        guard let data = try? Data(contentsOf: dbURL),
+              (try? JSONDecoder().decode(NotesDatabase.self, from: data)) != nil else { return }
+        try? data.write(to: today, options: .atomic)
+        let all = ((try? fm.contentsOfDirectory(at: backupsDir, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.lastPathComponent.hasPrefix("notes-") && $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent > $1.lastPathComponent }
+        for old in all.dropFirst(dailyBackupsKept) { try? fm.removeItem(at: old) }
     }
 
     func flush() {
         saveTask?.cancel()
-        persistNow(reason: "flush")
+        for (id, task) in versionTasks {
+            task.cancel()
+            snapshotVersionNow(noteID: id)
+        }
+        versionTasks.removeAll()
+        persistNow(reason: "flush", synchronous: true)
     }
 }

@@ -40,19 +40,8 @@ enum ChecklistParser {
     }
 
     static func parseItem(_ line: String) -> ChecklistItem? {
-        let trimmed = line
-        if trimmed.contains("- [ ]") {
-            let text = trimmed.replacingOccurrences(of: "- [ ]", with: "").trimmingCharacters(in: .whitespaces)
-            return ChecklistItem(id: UUID(), text: text, done: false, rawPrefix: "- [ ] ")
-        }
-        if trimmed.contains("- [x]") || trimmed.contains("- [X]") {
-            let text = trimmed
-                .replacingOccurrences(of: "- [x]", with: "")
-                .replacingOccurrences(of: "- [X]", with: "")
-                .trimmingCharacters(in: .whitespaces)
-            return ChecklistItem(id: UUID(), text: text, done: true, rawPrefix: "- [x] ")
-        }
-        return nil
+        guard let item = Checklist.parse(line) else { return nil }
+        return ChecklistItem(id: UUID(), text: item.text, done: item.done, rawPrefix: item.done ? "- [x] " : "- [ ] ")
     }
 
     static func rebuild(before: String, items: [ChecklistItem], after: String) -> String {

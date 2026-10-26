@@ -10,7 +10,8 @@ A native macOS edge sticky-notes app. Docks to the right screen edge, peeks on h
 
 - 贴边侧栏 / 桌面贴纸，经典六色
 - Markdown WYSIWYG：粗体、列表、可勾选待办、拖放图片、可点击链接（默认浏览器，单击只开一次）
-- 提醒、快捷键、速藏、备份 / 导出、回收站、历史版本
+- 挂绳模式：菜单栏下方一根晾衣绳，鼠标停一下就放下并置顶；把图片、文字、文件拖上去挂起，离开自动收起
+- 提醒（系统通知，App 退出也会响）、快捷键、速藏、Touch ID 解锁、备份 / 导出、回收站、历史版本
 
 ## 下载 Download
 
@@ -48,7 +49,8 @@ open build/Build/Products/Debug/EdgeNotes.app
 ## 数据 Data
 
 `~/Library/Application Support/EdgeNotes/`  
-附件：`…/Attachments/`  
+附件：`…/Attachments/`（无引用的附件会自动清理）  
+每日备份：`…/Backups/`（保留 7 天）；回收站 30 天后自动清空  
 无 iCloud / 无云同步。
 
 ## 许可 License

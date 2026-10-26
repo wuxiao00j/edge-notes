@@ -29,6 +29,8 @@ struct ContentView: View {
                 onCollapse: { EdgePanelController.shared.collapse(animated: true) },
                 onToggleSidebar: { settings.setSidebarHidden(!settings.sidebarHidden) },
                 sidebarHidden: settings.sidebarHidden,
+                // 左上角红点：只关闭侧栏，不退出 App
+                onClose: { EdgePanelController.shared.collapse(animated: true) },
                 onPrivacyQuickHide: {
                     settings.setPrivacyHideBodies(!settings.privacyHideBodies)
                 },
@@ -209,8 +211,17 @@ struct ContentView: View {
                                 Button("在新窗口打开") {
                                     NoteWindowManager.shared.open(noteID: note.id, store: store)
                                 }
+                                Button(note.onLine ? "从挂绳取下" : "挂到挂绳") {
+                                    if note.onLine { store.takeOffLine(id: note.id) } else { store.hangOnLine(id: note.id) }
+                                }
                                 Button(note.isArchived ? "取消归档" : "归档") { store.toggleArchive(id: note.id) }
-                                Button(note.isLocked ? "解锁" : "锁定") { store.toggleLocked(id: note.id) }
+                                Button(note.isLocked ? "解锁" : "锁定") {
+                                    if note.isLocked {
+                                        NoteLock.unlock(note.id, store: store)
+                                    } else {
+                                        store.setLocked(id: note.id, true)
+                                    }
+                                }
                                 Button("删除", role: .destructive) {
                                     store.softDelete(id: note.id)
                                     pull()
@@ -414,6 +425,15 @@ struct ContentView: View {
             .help("在独立贴纸窗口打开（计入桌面贴）")
 
             Button {
+                guard let note = store.selectedNote else { return }
+                if note.onLine { store.takeOffLine(id: note.id) } else { store.hangOnLine(id: note.id) }
+            } label: {
+                Label(store.selectedNote?.onLine == true ? "取下" : "挂绳", systemImage: "paperclip").font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("挂到屏幕顶部的挂绳上 / 从挂绳取下")
+
+            Button {
                 store.deleteSelected()
                 pull()
             } label: {
@@ -461,8 +481,12 @@ struct ContentView: View {
     }
 
     private func beginEditing(forceOn: Bool = false) {
-        if let note = store.selectedNote, note.isLocked {
-            store.toggleLocked(id: note.id)
+        // 锁定的便签需先验证身份解锁，不再点「编辑」就静默解锁
+        if let note = store.selectedNote, note.isLocked, !isEditing || forceOn {
+            NoteLock.unlock(note.id, store: store) { ok in
+                if ok { beginEditing(forceOn: true) }
+            }
+            return
         }
         if forceOn { isEditing = true } else { isEditing.toggle() }
         if isEditing {

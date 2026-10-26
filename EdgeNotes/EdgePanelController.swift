@@ -14,6 +14,9 @@ final class EdgePanelController: NSObject {
     private var globalMonitor: Any?
     private var hideWorkItem: DispatchWorkItem?
     private var settingsCancellable: AnyCancellable?
+    private var edgeDockCancellable: AnyCancellable?
+
+    private var edgeDock: Bool { AppSettings.shared.edgeDockEnabled }
 
     private let panelWidth: CGFloat = 380
     private let panelHeight: CGFloat = 560
@@ -64,12 +67,17 @@ final class EdgePanelController: NSObject {
         self.hostingView = host
         applyWindowLevel()
         collapse(animated: false)
-        panel.orderFrontRegardless()
+        // 贴边呼出关闭时，侧栏平时完全隐藏，只在菜单栏/快捷键打开时出现
+        if edgeDock { panel.orderFrontRegardless() }
         startMouseMonitoring()
 
         settingsCancellable = AppSettings.shared.$isAlwaysOnTop
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.applyWindowLevel() }
+        edgeDockCancellable = AppSettings.shared.$edgeDockEnabled
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] on in self?.applyEdgeDock(on) }
 
         NotificationCenter.default.addObserver(
             self,
@@ -109,6 +117,15 @@ final class EdgePanelController: NSObject {
 
     func toggle() {
         guard let panel else { return }
+        if !edgeDock && mode == .docked {
+            if panel.isVisible && isExpanded { collapse(animated: true) }
+            else {
+                expand(animated: false)
+                panel.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+            return
+        }
         if mode == .pinned {
             if panel.isVisible { panel.orderOut(nil) }
             else {
@@ -159,6 +176,19 @@ final class EdgePanelController: NSObject {
         guard let panel, let screen = dockingScreen() else { return }
         mode = .docked
         pinnedOrigin = nil
+        if !edgeDock {
+            // 不贴边：收起即隐藏，不留右边缘细条
+            panel.orderOut(nil)
+            isExpanded = false
+            let visible = visibleFrame(on: screen)
+            panel.setFrame(NSRect(
+                x: visible.maxX - panel.frame.width,
+                y: clampedY(panel.frame.minY, height: panel.frame.height, in: visible),
+                width: panel.frame.width,
+                height: panel.frame.height
+            ), display: false)
+            return
+        }
         let visible = visibleFrame(on: screen)
         let target = NSRect(
             x: visible.maxX - stripWidth,
@@ -287,7 +317,8 @@ final class EdgePanelController: NSObject {
     }
 
     private func handleMouseMoved() {
-        guard !isDragging, mode == .docked, let panel, let screen = dockingScreen() else { return }
+        // 不贴边时侧栏像普通窗口：不靠边缘呼出，也不在鼠标离开时自动收起
+        guard edgeDock, !isDragging, mode == .docked, let panel, let screen = dockingScreen() else { return }
         let mouse = NSEvent.mouseLocation
         let visible = visibleFrame(on: screen)
         let frame = panel.frame
@@ -310,6 +341,15 @@ final class EdgePanelController: NSObject {
         }
         hideWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + hideDelay, execute: work)
+    }
+
+    private func applyEdgeDock(_ on: Bool) {
+        guard let panel else { return }
+        if on {
+            if !panel.isVisible { collapse(animated: false); panel.orderFrontRegardless() }
+        } else if !isExpanded {
+            panel.orderOut(nil)
+        }
     }
 
     @objc private func screenParamsChanged() {
