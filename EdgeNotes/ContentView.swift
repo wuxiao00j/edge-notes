@@ -223,6 +223,10 @@ struct ContentView: View {
     }
 
     private func previewText(for note: Note) -> String {
+        // 文件便签显示可读路径，而不是编码过的 file:// 地址
+        if let url = note.fileLink {
+            return (url.path as NSString).abbreviatingWithTildeInPath
+        }
         var body = note.body
         if let re = try? NSRegularExpression(pattern: #"!\[[^\]]*\]\(attachments\/[^)]+\)"#) {
             body = re.stringByReplacingMatches(

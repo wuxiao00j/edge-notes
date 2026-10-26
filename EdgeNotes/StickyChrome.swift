@@ -153,7 +153,10 @@ struct NoteEditorPane: View {
                 .disabled(!isEditing)
                 .onChange(of: title) { _, _ in onChange() }
 
-            if isEditing {
+            if let url = Note(body: bodyText).fileLink {
+                // 文件卡片：正文只是文件地址，显示成文件信息，而不是一串编码过的 file:// 地址
+                FileNoteView(url: url)
+            } else if isEditing {
                 formattingBar
                 MarkdownTextView(
                     text: $bodyText,
@@ -227,6 +230,84 @@ struct NoteEditorPane: View {
         .buttonStyle(.borderless)
         .help(help)
         .accessibilityLabel(help)
+    }
+}
+
+/// 指向本地文件的便签：缩略图、文件名、所在位置、大小，以及打开 / 在 Finder 中显示 / 复制路径；可直接拖出文件
+struct FileNoteView: View {
+    let url: URL
+    @State private var thumb: NSImage?
+
+    private var exists: Bool { FileManager.default.fileExists(atPath: url.path) }
+
+    /// 所在文件夹，家目录显示成 ~
+    private var folder: String {
+        (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+    }
+
+    private var detail: String {
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey, .contentModificationDateKey, .localizedTypeDescriptionKey])
+        var parts: [String] = []
+        if let type = values?.localizedTypeDescription { parts.append(type) }
+        if values?.isDirectory != true, let size = values?.fileSize {
+            parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
+        }
+        if let date = values?.contentModificationDate {
+            parts.append(date.formatted(date: .abbreviated, time: .shortened))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                Group {
+                    if let thumb {
+                        Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fit)
+                    } else if exists {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().aspectRatio(contentMode: .fit)
+                    } else {
+                        Image(systemName: "questionmark.folder").font(.system(size: 40)).foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 96, height: 96)
+                .onDrag { NSItemProvider(object: url as NSURL) }
+                .help(L("拖出去即可把文件放进其它 App"))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(url.lastPathComponent)
+                        .font(.system(size: 14, weight: .semibold))
+                        .textSelection(.enabled)
+                        .lineLimit(3)
+                    if exists {
+                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text(L("文件已移动或删除")).font(.caption).foregroundStyle(.red)
+                    }
+                    Label(folder, systemImage: "folder")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+            }
+            HStack(spacing: 8) {
+                Button(L("打开")) { NSWorkspace.shared.open(url) }
+                    .keyboardShortcut(.defaultAction)
+                Button(L("在 Finder 中显示")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                Button(L("复制路径")) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(url.path, forType: .string)
+                }
+            }
+            .disabled(!exists)
+            .controlSize(.small)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, 6)
+        .task(id: url) { thumb = await FileThumbnailCache.thumbnail(for: url) }
     }
 }
 
