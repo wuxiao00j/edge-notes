@@ -30,8 +30,8 @@ struct StickyHeaderBar: View {
                         Circle().fill(Color.red.opacity(0.85)).frame(width: 10, height: 10)
                     }
                     .buttonStyle(.plain)
-                    .help("关闭（不退出）")
-                    .accessibilityLabel("关闭窗口")
+                    .help(L("关闭（不退出）"))
+                    .accessibilityLabel(L("关闭窗口"))
                     .padding(.trailing, 4)
                 }
 
@@ -56,8 +56,8 @@ struct StickyHeaderBar: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .help(isEditing ? "完成编辑，回到预览" : "开始编辑正文")
-                    .accessibilityLabel(isEditing ? "完成编辑" : "编辑")
+                    .help(isEditing ? L("完成编辑，回到预览") : L("开始编辑正文"))
+                    .accessibilityLabel(isEditing ? L("完成编辑") : L("编辑"))
                     .foregroundStyle(isEditing ? Color.accentColor : Color.primary)
 
                     if let onNew {
@@ -67,8 +67,8 @@ struct StickyHeaderBar: View {
                                 .frame(width: 22, height: 22)
                         }
                         .buttonStyle(.plain)
-                        .help("新建一条便签")
-                        .accessibilityLabel("新建便签")
+                        .help(L("新建一条便签"))
+                        .accessibilityLabel(L("新建便签"))
                     }
                 }
 
@@ -80,8 +80,8 @@ struct StickyHeaderBar: View {
                                 .frame(width: 22, height: 22)
                         }
                         .buttonStyle(.plain)
-                        .help(sidebarHidden ? "显示左侧笔记列表" : "隐藏左侧笔记列表")
-                        .accessibilityLabel(sidebarHidden ? "显示列表" : "隐藏列表")
+                        .help(sidebarHidden ? L("显示左侧笔记列表") : L("隐藏左侧笔记列表"))
+                        .accessibilityLabel(sidebarHidden ? L("显示列表") : L("隐藏列表"))
                     }
 
                     Button(action: onTogglePin) {
@@ -90,8 +90,8 @@ struct StickyHeaderBar: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .help(isAlwaysOnTop ? "取消始终置顶" : "始终置顶")
-                    .accessibilityLabel(isAlwaysOnTop ? "取消置顶" : "置顶")
+                    .help(isAlwaysOnTop ? L("取消始终置顶") : L("始终置顶"))
+                    .accessibilityLabel(isAlwaysOnTop ? L("取消置顶") : L("置顶"))
                     .foregroundStyle(isAlwaysOnTop ? Color.accentColor : Color.secondary)
 
                     if let onPrivacyQuickHide {
@@ -101,8 +101,8 @@ struct StickyHeaderBar: View {
                                 .frame(width: 22, height: 22)
                         }
                         .buttonStyle(.plain)
-                        .help(privacyOn ? "取消速藏正文" : "速藏正文（预览时隐藏内容）")
-                        .accessibilityLabel(privacyOn ? "取消速藏" : "速藏正文")
+                        .help(privacyOn ? L("取消速藏正文") : L("速藏正文（预览时隐藏内容）"))
+                        .accessibilityLabel(privacyOn ? L("取消速藏") : L("速藏正文"))
                     }
                 }
                 .padding(.leading, 6)
@@ -117,8 +117,8 @@ struct StickyHeaderBar: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .help("收回面板，贴回屏幕右边缘")
-                    .accessibilityLabel("收回面板")
+                    .help(L("收回面板，贴回屏幕右边缘"))
+                    .accessibilityLabel(L("收回面板"))
                 }
             }
             .padding(.horizontal, 12)
@@ -142,18 +142,21 @@ struct NoteEditorPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if isLocked {
-                Label("已锁定", systemImage: "lock.fill")
+                Label(L("已锁定"), systemImage: "lock.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            TextField("标题（可留空）", text: $title)
+            TextField(L("标题（可留空）"), text: $title)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15, weight: .semibold))
                 .disabled(!isEditing)
                 .onChange(of: title) { _, _ in onChange() }
 
-            if isEditing {
+            if let url = Note(body: bodyText).fileLink {
+                // 文件卡片：正文只是文件地址，显示成文件信息，而不是一串编码过的 file:// 地址
+                FileNoteView(url: url)
+            } else if isEditing {
                 formattingBar
                 MarkdownTextView(
                     text: $bodyText,
@@ -171,11 +174,11 @@ struct NoteEditorPane: View {
                 }
             } else {
                 if privacyHide || isLocked {
-                    Text("内容已隐藏")
+                    Text(L("内容已隐藏"))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else if bodyText.isEmpty {
-                    Text("点「编辑」，或点此处开始编辑…")
+                    Text(L("点「编辑」，或点此处开始编辑…"))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
@@ -196,17 +199,115 @@ struct NoteEditorPane: View {
     }
 
     private var formattingBar: some View {
-        HStack(spacing: 8) {
-            Button("粗体") { bridge.bold(); onChange() }.buttonStyle(.borderless)
-            Button("列表") { bridge.list(); onChange() }.buttonStyle(.borderless)
-            Button("待办") { bridge.todo(); onChange() }.buttonStyle(.borderless)
+        HStack(spacing: 4) {
+            formatButton("bold", L("粗体（⌘B）")) { bridge.bold() }
+            formatButton("list.bullet", L("项目符号列表（行首输入「- 」）")) { bridge.list() }
+            formatButton("list.number", L("编号列表（行首输入「1. 」）")) { bridge.numbered() }
+            formatButton("checklist", L("待办（行首输入「[] 」）")) { bridge.todo() }
+            Text(L("Tab 缩进"))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .padding(.leading, 4)
             Spacer()
-            Text("可拖入图片")
+            Text(L("可拖入图片"))
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
         }
         .font(.system(size: 11, weight: .medium))
         .foregroundStyle(color.accent)
+    }
+
+    private func formatButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            onChange()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: 26, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .help(help)
+        .accessibilityLabel(help)
+    }
+}
+
+/// 指向本地文件的便签：缩略图、文件名、所在位置、大小，以及打开 / 在 Finder 中显示 / 复制路径；可直接拖出文件
+struct FileNoteView: View {
+    let url: URL
+    @State private var thumb: NSImage?
+
+    private var exists: Bool { FileManager.default.fileExists(atPath: url.path) }
+
+    /// 所在文件夹，家目录显示成 ~
+    private var folder: String {
+        (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+    }
+
+    private var detail: String {
+        let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey, .contentModificationDateKey, .localizedTypeDescriptionKey])
+        var parts: [String] = []
+        if let type = values?.localizedTypeDescription { parts.append(type) }
+        if values?.isDirectory != true, let size = values?.fileSize {
+            parts.append(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
+        }
+        if let date = values?.contentModificationDate {
+            parts.append(date.formatted(date: .abbreviated, time: .shortened))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                Group {
+                    if let thumb {
+                        Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fit)
+                    } else if exists {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().aspectRatio(contentMode: .fit)
+                    } else {
+                        Image(systemName: "questionmark.folder").font(.system(size: 40)).foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: 96, height: 96)
+                .onDrag { NSItemProvider(object: url as NSURL) }
+                .help(L("拖出去即可把文件放进其它 App"))
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(url.lastPathComponent)
+                        .font(.system(size: 14, weight: .semibold))
+                        .textSelection(.enabled)
+                        .lineLimit(3)
+                    if exists {
+                        Text(detail).font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text(L("文件已移动或删除")).font(.caption).foregroundStyle(.red)
+                    }
+                    Label(folder, systemImage: "folder")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                }
+            }
+            HStack(spacing: 8) {
+                Button(L("打开")) { NSWorkspace.shared.open(url) }
+                    .keyboardShortcut(.defaultAction)
+                Button(L("在 Finder 中显示")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                Button(L("复制路径")) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(url.path, forType: .string)
+                }
+            }
+            .disabled(!exists)
+            .controlSize(.small)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, 6)
+        .task(id: url) { thumb = await FileThumbnailCache.thumbnail(for: url) }
     }
 }
 

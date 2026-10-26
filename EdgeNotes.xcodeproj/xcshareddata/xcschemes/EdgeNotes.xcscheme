@@ -39,6 +39,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F305DCE787927859D19847AA"
+               BuildableName = "EdgeNotesTests.xctest"
+               BlueprintName = "EdgeNotesTests"
+               ReferencedContainer = "container:EdgeNotes.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

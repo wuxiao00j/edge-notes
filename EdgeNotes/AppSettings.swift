@@ -11,14 +11,21 @@ final class AppSettings: ObservableObject {
     @Published var defaultOpacity: Double
     @Published var launchAtLogin: Bool
     @Published var privacyHideBodies: Bool
-    @Published var mainViewMode: MainViewMode
     @Published var hotkeyToggle: HotKeyChord
     @Published var hotkeyCapture: HotKeyChord
-    @Published var hotkeyPaste: HotKeyChord
     @Published var sidebarHidden: Bool
     @Published var clotheslineEnabled: Bool
-    /// 鼠标移到屏幕右边缘呼出侧栏。默认关：只留挂绳，侧栏从菜单栏图标或快捷键打开
-    @Published var edgeDockEnabled: Bool
+    /// 挂满 N 天自动取下；0 = 不自动
+    @Published var lineAutoRemoveDays: Int
+    /// 全屏 App 里也显示挂绳
+    @Published var lineShowInFullScreen: Bool
+    /// 钉住挂绳：一直放下，不自动收起
+    @Published var linePinnedOpen: Bool
+    @Published var hotkeyHang: HotKeyChord
+    @Published var lineCardSize: LineCardSize
+    /// 记录复制过的内容，挂在绳上的剪贴板卡片里
+    @Published var clipboardHistoryEnabled: Bool
+    @Published var clipboardCardSize: LineCardSize
 
     private let defaults = UserDefaults.standard
 
@@ -27,13 +34,17 @@ final class AppSettings: ObservableObject {
         static let defaultOpacity = "EdgeNotes.defaultOpacity"
         static let launchAtLogin = "EdgeNotes.launchAtLogin"
         static let privacyHideBodies = "EdgeNotes.privacyHideBodies"
-        static let mainViewMode = "EdgeNotes.mainViewMode"
         static let hotkeyToggle = "EdgeNotes.hotkeyToggle"
         static let hotkeyCapture = "EdgeNotes.hotkeyCapture"
-        static let hotkeyPaste = "EdgeNotes.hotkeyPaste"
         static let sidebarHidden = "EdgeNotes.sidebarHidden"
         static let clotheslineEnabled = "EdgeNotes.clotheslineEnabled"
-        static let edgeDockEnabled = "EdgeNotes.edgeDockEnabled"
+        static let lineAutoRemoveDays = "EdgeNotes.lineAutoRemoveDays"
+        static let lineShowInFullScreen = "EdgeNotes.lineShowInFullScreen"
+        static let linePinnedOpen = "EdgeNotes.linePinnedOpen"
+        static let hotkeyHang = "EdgeNotes.hotkeyHang"
+        static let lineCardSize = "EdgeNotes.lineCardSize"
+        static let clipboardHistoryEnabled = "EdgeNotes.clipboardHistoryEnabled"
+        static let clipboardCardSize = "EdgeNotes.clipboardCardSize"
     }
 
     private init() {
@@ -47,18 +58,18 @@ final class AppSettings: ObservableObject {
         defaultOpacity = opacity == 0 ? 1.0 : min(1.0, max(0.35, opacity))
         launchAtLogin = d.bool(forKey: Keys.launchAtLogin)
         privacyHideBodies = d.bool(forKey: Keys.privacyHideBodies)
-        if let raw = d.string(forKey: Keys.mainViewMode), let mode = MainViewMode(rawValue: raw) {
-            mainViewMode = mode
-        } else {
-            mainViewMode = .all
-        }
 
         hotkeyToggle = Self.loadChord(d, Keys.hotkeyToggle) ?? .optionCommandN
         hotkeyCapture = Self.loadChord(d, Keys.hotkeyCapture) ?? .optionCommandT
-        hotkeyPaste = Self.loadChord(d, Keys.hotkeyPaste) ?? .optionCommandShiftV
         sidebarHidden = d.bool(forKey: Keys.sidebarHidden)
         clotheslineEnabled = d.object(forKey: Keys.clotheslineEnabled) == nil ? true : d.bool(forKey: Keys.clotheslineEnabled)
-        edgeDockEnabled = d.bool(forKey: Keys.edgeDockEnabled)
+        lineAutoRemoveDays = max(0, d.integer(forKey: Keys.lineAutoRemoveDays))
+        lineShowInFullScreen = d.bool(forKey: Keys.lineShowInFullScreen)
+        linePinnedOpen = d.bool(forKey: Keys.linePinnedOpen)
+        hotkeyHang = Self.loadChord(d, Keys.hotkeyHang) ?? .optionCommandShiftH
+        lineCardSize = d.string(forKey: Keys.lineCardSize).flatMap(LineCardSize.init(rawValue:)) ?? .small
+        clipboardHistoryEnabled = d.object(forKey: Keys.clipboardHistoryEnabled) == nil ? true : d.bool(forKey: Keys.clipboardHistoryEnabled)
+        clipboardCardSize = d.string(forKey: Keys.clipboardCardSize).flatMap(LineCardSize.init(rawValue:)) ?? .small
     }
 
     private static func loadChord(_ d: UserDefaults, _ key: String) -> HotKeyChord? {
@@ -93,11 +104,6 @@ final class AppSettings: ObservableObject {
         defaults.set(on, forKey: Keys.privacyHideBodies)
     }
 
-    func setMainViewMode(_ mode: MainViewMode) {
-        mainViewMode = mode
-        defaults.set(mode.rawValue, forKey: Keys.mainViewMode)
-    }
-
     func setHotkeyToggle(_ chord: HotKeyChord) {
         hotkeyToggle = chord
         saveChord(chord, key: Keys.hotkeyToggle)
@@ -106,11 +112,6 @@ final class AppSettings: ObservableObject {
     func setHotkeyCapture(_ chord: HotKeyChord) {
         hotkeyCapture = chord
         saveChord(chord, key: Keys.hotkeyCapture)
-    }
-
-    func setHotkeyPaste(_ chord: HotKeyChord) {
-        hotkeyPaste = chord
-        saveChord(chord, key: Keys.hotkeyPaste)
     }
 
     func setSidebarHidden(_ hidden: Bool) {
@@ -123,9 +124,39 @@ final class AppSettings: ObservableObject {
         defaults.set(on, forKey: Keys.clotheslineEnabled)
     }
 
-    func setEdgeDockEnabled(_ on: Bool) {
-        edgeDockEnabled = on
-        defaults.set(on, forKey: Keys.edgeDockEnabled)
+    func setLineAutoRemoveDays(_ days: Int) {
+        lineAutoRemoveDays = max(0, days)
+        defaults.set(lineAutoRemoveDays, forKey: Keys.lineAutoRemoveDays)
+    }
+
+    func setLineShowInFullScreen(_ on: Bool) {
+        lineShowInFullScreen = on
+        defaults.set(on, forKey: Keys.lineShowInFullScreen)
+    }
+
+    func setLinePinnedOpen(_ on: Bool) {
+        linePinnedOpen = on
+        defaults.set(on, forKey: Keys.linePinnedOpen)
+    }
+
+    func setLineCardSize(_ size: LineCardSize) {
+        lineCardSize = size
+        defaults.set(size.rawValue, forKey: Keys.lineCardSize)
+    }
+
+    func setClipboardCardSize(_ size: LineCardSize) {
+        clipboardCardSize = size
+        defaults.set(size.rawValue, forKey: Keys.clipboardCardSize)
+    }
+
+    func setClipboardHistoryEnabled(_ on: Bool) {
+        clipboardHistoryEnabled = on
+        defaults.set(on, forKey: Keys.clipboardHistoryEnabled)
+    }
+
+    func setHotkeyHang(_ chord: HotKeyChord) {
+        hotkeyHang = chord
+        saveChord(chord, key: Keys.hotkeyHang)
     }
 
     private func applyLaunchAtLogin() {
@@ -143,16 +174,45 @@ final class AppSettings: ObservableObject {
     }
 }
 
-enum MainViewMode: String, CaseIterable, Identifiable {
-    case desktop
-    case all
+/// 挂绳卡片大小：小 = 原尺寸
+enum LineCardSize: String, CaseIterable, Identifiable {
+    case small, medium, large
     var id: String { rawValue }
-    var label: String {
+    /// 各尺寸卡片的版面：大卡不是放大，而是更宽更高、能显示更多内容
+    var metrics: CardMetrics {
         switch self {
-        case .desktop: return "桌面贴"
-        case .all: return "全部列表"
+        case .small:  return CardMetrics(width: 128, minHeight: 96, maxHeight: 150, titleLines: 2, bodyLines: 5, photoWidth: 124, photoMaxHeight: 160, iconSize: 64)
+        case .medium: return CardMetrics(width: 184, minHeight: 130, maxHeight: 250, titleLines: 3, bodyLines: 11, photoWidth: 180, photoMaxHeight: 240, iconSize: 88)
+        case .large:  return CardMetrics(width: 250, minHeight: 170, maxHeight: 360, titleLines: 3, bodyLines: 18, photoWidth: 246, photoMaxHeight: 340, iconSize: 112)
         }
     }
+
+    /// 剪贴板大卡片的尺寸
+    var clipboardSize: CGSize {
+        switch self {
+        case .small: return CGSize(width: 236, height: 206)
+        case .medium: return CGSize(width: 290, height: 290)
+        case .large: return CGSize(width: 350, height: 380)
+        }
+    }
+    var label: String {
+        switch self {
+        case .small: return L("小")
+        case .medium: return L("中")
+        case .large: return L("大")
+        }
+    }
+}
+
+struct CardMetrics {
+    var width: CGFloat
+    var minHeight: CGFloat
+    var maxHeight: CGFloat
+    var titleLines: Int
+    var bodyLines: Int
+    var photoWidth: CGFloat
+    var photoMaxHeight: CGFloat
+    var iconSize: CGFloat
 }
 
 struct HotKeyChord: Codable, Equatable {
@@ -168,8 +228,8 @@ struct HotKeyChord: Codable, Equatable {
         HotKeyChord(keyCode: UInt32(kVK_ANSI_T), modifiers: UInt32(cmdKey | optionKey), label: "⌥⌘T")
     }
 
-    static var optionCommandShiftV: HotKeyChord {
-        HotKeyChord(keyCode: UInt32(kVK_ANSI_V), modifiers: UInt32(cmdKey | optionKey | shiftKey), label: "⌥⇧⌘V")
+    static var optionCommandShiftH: HotKeyChord {
+        HotKeyChord(keyCode: UInt32(kVK_ANSI_H), modifiers: UInt32(cmdKey | optionKey | shiftKey), label: "⌥⇧⌘H")
     }
 }
 
@@ -185,17 +245,17 @@ enum NoteLock {
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             // 没有可用的验证方式时退回确认对话框
             let alert = NSAlert()
-            alert.messageText = "解锁这条便签？"
-            alert.informativeText = "解锁后正文可以编辑。"
-            alert.addButton(withTitle: "解锁")
-            alert.addButton(withTitle: "取消")
+            alert.messageText = L("解锁这条便签？")
+            alert.informativeText = L("解锁后正文可以编辑。")
+            alert.addButton(withTitle: L("解锁"))
+            alert.addButton(withTitle: L("取消"))
             NSApp.activate(ignoringOtherApps: true)
             let ok = alert.runModal() == .alertFirstButtonReturn
             if ok { store.setLocked(id: id, false) }
             completion?(ok)
             return
         }
-        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "解锁便签") { success, _ in
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: L("解锁便签")) { success, _ in
             Task { @MainActor in
                 if success { store.setLocked(id: id, false) }
                 completion?(success)

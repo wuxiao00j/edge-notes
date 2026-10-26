@@ -57,7 +57,6 @@ final class NoteWindowManager {
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        store.update(id: noteID, bumpModified: false) { $0.pinnedToDesktop = true }
     }
 
     func close(noteID: UUID) {
@@ -65,14 +64,12 @@ final class NoteWindowManager {
             panel.close()
         }
         StickyWindowDelegate.shared.untrack(noteID: noteID)
-        store?.update(id: noteID, bumpModified: false) { $0.pinnedToDesktop = false }
     }
 
     func handleClosed(_ window: NSWindow) {
         if let pair = windows.first(where: { $0.value === window }) {
             windows.removeValue(forKey: pair.key)
             StickyWindowDelegate.shared.untrack(noteID: pair.key)
-            store?.update(id: pair.key, bumpModified: false) { $0.pinnedToDesktop = false }
         }
     }
 
@@ -135,12 +132,12 @@ struct StickyNoteWindowView: View {
     var body: some View {
         VStack(spacing: 0) {
             StickyHeaderBar(
-                title: note?.displayTitle ?? "便签",
+                title: note?.displayTitle ?? L("便签"),
                 color: note?.color ?? .glass,
                 isEditing: isEditing,
                 isAlwaysOnTop: settings.isAlwaysOnTop,
                 onTogglePin: {
-                    EdgePanelController.shared.setAlwaysOnTop(!settings.isAlwaysOnTop)
+                    NotesWindowController.shared.setAlwaysOnTop(!settings.isAlwaysOnTop)
                 },
                 onToggleEdit: {
                     isEditing.toggle()
@@ -232,7 +229,7 @@ struct StickyNoteWindowView: View {
                         Image(systemName: "xmark.circle.fill").font(.system(size: 12))
                     }
                     .buttonStyle(.plain)
-                    .help("清除定时提醒")
+                    .help(L("清除定时提醒"))
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -240,14 +237,14 @@ struct StickyNoteWindowView: View {
                 .foregroundStyle(.orange)
                 .onTapGesture { showReminder = true }
             }
-            Button(note?.reminderAt == nil ? "提醒" : "改提醒") { showReminder = true }
+            Button(note?.reminderAt == nil ? L("提醒") : L("改提醒")) { showReminder = true }
                 .buttonStyle(.borderless)
                 .font(.caption)
-                .help("设置或修改定时提醒")
+                .help(L("设置或修改定时提醒"))
             Spacer()
-            Button("侧栏") {
+            Button(L("全部便签")) {
                 store.select(noteID)
-                EdgePanelController.shared.expand(animated: true)
+                NotesWindowController.shared.show()
             }
             .buttonStyle(.borderless)
             .font(.caption)

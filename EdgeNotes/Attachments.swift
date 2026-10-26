@@ -1,66 +1,12 @@
 import AppKit
-import ApplicationServices
-
-enum SelectionCapture {
-    struct Result {
-        var text: String
-        var source: String // "选区" / "剪贴板" / "空"
-    }
-
-    /// 优先读系统当前选区（需辅助功能权限）；失败则回退剪贴板（含图片提示）。
-    static func capturePreferringSelection() -> Result {
-        if let selected = selectedTextViaAccessibility(), !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Result(text: selected, source: "选区")
-        }
-        return captureClipboard()
-    }
-
-    static func captureClipboard() -> Result {
-        let pb = NSPasteboard.general
-        if let s = pb.string(forType: .string), !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Result(text: s, source: "剪贴板")
-        }
-        // 图片：保存到附件并返回 markdown
-        if let imgs = pb.readObjects(forClasses: [NSImage.self], options: nil) as? [NSImage], let img = imgs.first,
-           let md = AttachmentStore.saveImage(img, preferredName: "paste") {
-            return Result(text: md, source: "剪贴板图片")
-        }
-        if let urls = pb.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], !urls.isEmpty {
-            let text = urls.map(\.absoluteString).joined(separator: "\n")
-            return Result(text: text, source: "剪贴板链接")
-        }
-        return Result(text: "", source: "空")
-    }
-
-    static func accessibilityTrusted() -> Bool {
-        AXIsProcessTrusted()
-    }
-
-    static func promptAccessibilityIfNeeded() {
-        let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(opts)
-    }
-
-    private static func selectedTextViaAccessibility() -> String? {
-        guard AXIsProcessTrusted() else { return nil }
-        let systemWide = AXUIElementCreateSystemWide()
-        var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let focusedEl = focused else { return nil }
-        let element = unsafeBitCast(focusedEl, to: AXUIElement.self)
-        var selected: CFTypeRef?
-        if AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selected) == .success,
-           let s = selected as? String, !s.isEmpty {
-            return s
-        }
-        return nil
-    }
-}
 
 enum AttachmentStore {
+    /// 数据根目录，由 NoteStore 设置（附件放在其下的 Attachments/）
+    nonisolated(unsafe) static var root: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        .appendingPathComponent("EdgeNotes", isDirectory: true)
+
     static var directory: URL {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let dir = support.appendingPathComponent("EdgeNotes/Attachments", isDirectory: true)
+        let dir = root.appendingPathComponent("Attachments", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -144,7 +90,7 @@ enum LinkTitleFetcher {
             }
             let finalTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
             DispatchQueue.main.async {
-                completion(finalTitle.isEmpty ? (url.host ?? "链接") : finalTitle)
+                completion(finalTitle.isEmpty ? (url.host ?? L("链接")) : finalTitle)
             }
         }.resume()
     }

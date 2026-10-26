@@ -1,0 +1,94 @@
+#!/bin/bash
+# 发布新版本：Developer ID 签名 → 苹果公证 → 装订 → Sparkle 签名 → 更新 appcast.xml → GitHub Release
+#
+# 用法：scripts/release.sh <版本号> <构建号>      例：scripts/release.sh 0.6.0 6
+#
+# 一次性准备（见 README「发布」）：
+#   1. 钥匙串里有「Developer ID Application」证书
+#   2. 已保存公证凭据：xcrun notarytool store-credentials edgenotes --apple-id <邮箱> --team-id <TEAMID>
+#   3. Sparkle 私钥在登录钥匙串里（generate_keys 生成过）
+#   4. 环境变量 TEAM_ID=<你的 10 位 Team ID>
+set -euo pipefail
+
+VERSION="${1:?用法: scripts/release.sh <版本号> <构建号>}"
+BUILD="${2:?用法: scripts/release.sh <版本号> <构建号>}"
+TEAM_ID="${TEAM_ID:?请先 export TEAM_ID=<你的 Team ID>}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-edgenotes}"
+REPO="wuxiao00j/edge-notes"
+
+cd "$(dirname "$0")/.."
+ROOT="$PWD"
+OUT="$ROOT/build/release"
+APP="$OUT/Build/Products/Release/EdgeNotes.app"
+ZIP="$ROOT/build/EdgeNotes-macOS.zip"
+SPARKLE_BIN="$ROOT/build/SourcePackages/artifacts/sparkle/Sparkle/bin"
+
+[ -z "$(git status --porcelain)" ] || { echo "工作区有未提交的改动，先提交再发布"; exit 1; }
+# App 从 main 分支读取 appcast.xml，必须在 main 上发布
+[ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] || { echo "请在 main 分支上运行"; exit 1; }
+git pull --ff-only
+
+echo "==> 版本号 $VERSION ($BUILD)"
+sed -i '' -E "s/MARKETING_VERSION: \"[^\"]+\"/MARKETING_VERSION: \"$VERSION\"/; s/CURRENT_PROJECT_VERSION: \"[^\"]+\"/CURRENT_PROJECT_VERSION: \"$BUILD\"/" project.yml
+xcodegen generate >/dev/null
+
+echo "==> 运行单元测试"
+xcodebuild test -scheme EdgeNotes -derivedDataPath build -quiet
+
+echo "==> 构建（Developer ID + Hardened Runtime）"
+rm -rf "$OUT"
+xcodebuild -scheme EdgeNotes -configuration Release -derivedDataPath "$OUT" \
+  -clonedSourcePackagesDirPath build/SourcePackages \
+  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" DEVELOPMENT_TEAM="$TEAM_ID" \
+  ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS="--timestamp" -quiet build
+# Sparkle 里的辅助程序也要用 Developer ID + Hardened Runtime 重签，否则公证不过（Sparkle 官方文档的做法）
+ID="Developer ID Application"
+FW="$APP/Contents/Frameworks/Sparkle.framework"
+codesign -f -s "$ID" -o runtime --timestamp "$FW/Versions/B/XPCServices/Installer.xpc"
+codesign -f -s "$ID" -o runtime --timestamp --preserve-metadata=entitlements "$FW/Versions/B/XPCServices/Downloader.xpc"
+codesign -f -s "$ID" -o runtime --timestamp "$FW/Versions/B/Autoupdate"
+codesign -f -s "$ID" -o runtime --timestamp "$FW/Versions/B/Updater.app"
+codesign -f -s "$ID" -o runtime --timestamp "$FW"
+codesign -f -s "$ID" -o runtime --timestamp "$APP"
+codesign --verify --deep --strict --verbose=2 "$APP"
+
+echo "==> 公证（几分钟）"
+rm -f "$ZIP"
+ditto -c -k --keepParent "$APP" "$ZIP"
+xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
+xcrun stapler staple "$APP"
+spctl --assess --type execute --verbose "$APP"
+# 装订后重新打包，用户离线也能通过 Gatekeeper
+rm -f "$ZIP"
+ditto -c -k --keepParent "$APP" "$ZIP"
+
+echo "==> Sparkle 签名并更新 appcast.xml"
+SIG_ATTRS="$("$SPARKLE_BIN/sign_update" "$ZIP")"   # sparkle:edSignature="…" length="…"
+URL="https://github.com/$REPO/releases/download/v$VERSION/EdgeNotes-macOS.zip"
+python3 - "$VERSION" "$BUILD" "$URL" "$SIG_ATTRS" <<'PY'
+import sys, email.utils
+version, build, url, sig = sys.argv[1:5]
+item = f"""    <item>
+      <title>{version}</title>
+      <pubDate>{email.utils.formatdate(localtime=True)}</pubDate>
+      <sparkle:version>{build}</sparkle:version>
+      <sparkle:shortVersionString>{version}</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <link>https://github.com/wuxiao00j/edge-notes/releases/tag/v{version}</link>
+      <enclosure url="{url}" {sig} type="application/octet-stream"/>
+    </item>
+"""
+p = "appcast.xml"
+s = open(p).read()
+s = s.replace("  </channel>", item + "  </channel>", 1) if "<item>" not in s else s.replace("    <item>", item + "    <item>", 1)
+open(p, "w").write(s)
+PY
+
+echo "==> 提交版本号与 appcast，打标签，发布 Release"
+git add project.yml EdgeNotes.xcodeproj appcast.xml
+git commit -m "Release v$VERSION"
+git tag "v$VERSION"
+git push origin HEAD "v$VERSION"
+gh release create "v$VERSION" "$ZIP" --repo "$REPO" --title "EdgeNotes v$VERSION" --notes-file "${RELEASE_NOTES:-/dev/null}" --latest
+
+echo "==> 完成：$URL"

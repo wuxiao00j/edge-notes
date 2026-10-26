@@ -24,14 +24,14 @@ enum NoteColor: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch normalized {
-        case .glass: return "本色"
-        case .yellow: return "黄色"
-        case .blue: return "蓝色"
-        case .green: return "绿色"
-        case .pink: return "粉色"
-        case .purple: return "紫色"
-        case .gray: return "灰色"
-        default: return "本色"
+        case .glass: return L("本色")
+        case .yellow: return L("黄色")
+        case .blue: return L("蓝色")
+        case .green: return L("绿色")
+        case .pink: return L("粉色")
+        case .purple: return L("紫色")
+        case .gray: return L("灰色")
+        default: return L("本色")
         }
     }
 
@@ -104,6 +104,12 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
     var onLine: Bool
     /// 在挂绳上的水平位置（0…1）；nil 表示尚未摆放
     var linePosition: Double?
+    /// 挂上绳的时间（用于「挂满 N 天自动取下」）
+    var lineHungAt: Date?
+    /// 挂在绳上的本地文件：只记引用（书签），不复制文件
+    var fileBookmark: Data?
+    /// 这张卡片自己的大小（small / medium / large）；nil = 跟随设置里的默认
+    var lineCardSize: String?
     var updatedAt: Date
     var createdAt: Date
 
@@ -123,6 +129,8 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         reminderRepeatDays: Int? = nil,
         onLine: Bool = false,
         linePosition: Double? = nil,
+        lineHungAt: Date? = nil,
+        fileBookmark: Data? = nil,
         updatedAt: Date = Date(),
         createdAt: Date = Date()
     ) {
@@ -141,13 +149,15 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         self.reminderRepeatDays = reminderRepeatDays
         self.onLine = onLine
         self.linePosition = linePosition
+        self.lineHungAt = lineHungAt
+        self.fileBookmark = fileBookmark
         self.updatedAt = updatedAt
         self.createdAt = createdAt
     }
 
     var preview: String {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return "空便签" }
+        if trimmed.isEmpty { return L("空便签") }
         return String(trimmed.prefix(80)).replacingOccurrences(of: "\n", with: " ")
     }
 
@@ -163,12 +173,12 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
             cleaned = String(cleaned.dropFirst(2))
         }
         if Note.imageRegex.firstMatch(in: cleaned, range: NSRange(location: 0, length: (cleaned as NSString).length)) != nil {
-            cleaned = "图片"
+            cleaned = L("图片")
         }
         cleaned = cleaned
             .replacingOccurrences(of: "**", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return cleaned.isEmpty ? "未命名便签" : String(cleaned.prefix(28))
+        return cleaned.isEmpty ? L("未命名便签") : String(cleaned.prefix(28))
     }
 
     static let imageRegex = try! NSRegularExpression(pattern: #"!\[([^\]]*)\]\((attachments\/[^)\s]+)\)"#)
@@ -198,6 +208,14 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         return url
     }
 
+    /// 正文只是一个本地文件地址（挂绳上的文件卡片，指向原文件）
+    var fileLink: URL? {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("file://"), trimmed.rangeOfCharacter(from: .newlines) == nil,
+              let url = URL(string: trimmed), url.isFileURL else { return nil }
+        return url
+    }
+
     var searchBlob: String {
         ([title, body] + tags).joined(separator: "\n").lowercased()
     }
@@ -205,7 +223,7 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, body, color, tags, isArchived, isCollapsed, isLocked
         case opacity, windowFrame, pinnedToDesktop, reminderAt, reminderRepeatDays
-        case onLine, linePosition
+        case onLine, linePosition, lineHungAt, fileBookmark, lineCardSize
         case updatedAt, createdAt
     }
 
@@ -227,6 +245,9 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         reminderRepeatDays = try c.decodeIfPresent(Int.self, forKey: .reminderRepeatDays)
         onLine = try c.decodeIfPresent(Bool.self, forKey: .onLine) ?? false
         linePosition = try c.decodeIfPresent(Double.self, forKey: .linePosition)
+        lineHungAt = try c.decodeIfPresent(Date.self, forKey: .lineHungAt)
+        fileBookmark = try c.decodeIfPresent(Data.self, forKey: .fileBookmark)
+        lineCardSize = try c.decodeIfPresent(String.self, forKey: .lineCardSize)
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
@@ -248,6 +269,9 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         try c.encodeIfPresent(reminderRepeatDays, forKey: .reminderRepeatDays)
         try c.encode(onLine, forKey: .onLine)
         try c.encodeIfPresent(linePosition, forKey: .linePosition)
+        try c.encodeIfPresent(lineHungAt, forKey: .lineHungAt)
+        try c.encodeIfPresent(fileBookmark, forKey: .fileBookmark)
+        try c.encodeIfPresent(lineCardSize, forKey: .lineCardSize)
         try c.encode(updatedAt, forKey: .updatedAt)
         try c.encode(createdAt, forKey: .createdAt)
     }
@@ -281,7 +305,7 @@ struct NotesDatabase: Codable {
     var versions: [NoteVersion]
     var schemaVersion: Int
 
-    static let currentSchema = 4
+    static let currentSchema = 5
 
     static var empty: NotesDatabase {
         NotesDatabase(notes: [], trash: [], versions: [], schemaVersion: currentSchema)
@@ -310,4 +334,27 @@ enum Checklist {
     static func line(_ item: Item) -> String {
         item.indent + (item.done ? "- [x] " : "- [ ] ") + item.text
     }
+}
+
+/// 中文转拼音（系统自带转换），用于拼音 / 首字母搜索
+enum Pinyin {
+    /// full：去空格的全拼；initials：每个音节（或英文单词）的首字母
+    static func of(_ text: String) -> (full: String, initials: String) {
+        let m = NSMutableString(string: text.lowercased()) as CFMutableString
+        CFStringTransform(m, nil, kCFStringTransformMandarinLatin, false)
+        CFStringTransform(m, nil, kCFStringTransformStripDiacritics, false)
+        let latin = (m as String).lowercased()
+        let words = latin.split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+        return (words.joined(), String(words.compactMap(\.first)))
+    }
+}
+
+/// 界面文字本地化：键就是中文原文；英文在 en.lproj/Localizable.strings
+func L(_ key: String) -> String {
+    NSLocalizedString(key, comment: "")
+}
+
+/// 带参数的本地化：键里用 %@ 占位，参数按顺序填入
+func LF(_ key: String, _ args: Any...) -> String {
+    String(format: L(key), arguments: args.map { "\($0)" as NSString })
 }

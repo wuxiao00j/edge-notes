@@ -29,10 +29,17 @@ final class NoteStore: ObservableObject {
     static let trashRetentionDays = 30
     static let dailyBackupsKept = 7
 
-    init() {
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        dir = support.appendingPathComponent("EdgeNotes", isDirectory: true)
+    /// 默认数据目录 ~/Library/Application Support/EdgeNotes
+    static var defaultDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("EdgeNotes", isDirectory: true)
+    }
+
+    /// - Parameter directory: 数据目录；测试时传临时目录（附件目录也跟着走，清理附件不会碰到真实数据）
+    init(directory: URL? = nil) {
+        dir = directory ?? Self.defaultDirectory
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        AttachmentStore.root = dir
         dbURL = dir.appendingPathComponent("notes.json")
         crashURL = dir.appendingPathComponent("crash-recovery.json")
         backupURL = dir.appendingPathComponent("notes.backup.json")
@@ -56,18 +63,10 @@ final class NoteStore: ObservableObject {
 
         if !hadExistingData && notes.isEmpty && trash.isEmpty {
             let welcome = Note(
-                title: "欢迎使用贴边便签",
-                body: """
-                把鼠标移到菜单栏正下方停一下，挂绳会放下来；图片、文字、链接拖上去就挂住了。
-
-                • 菜单栏图标或 ⌥⌘N 显示/隐藏这个侧栏
-                • ⌥⌘T 极速新建并开始输入
-                • ⌥⇧⌘V 把剪贴板内容贴成新便签
-                • 点 + 默认在侧栏新建；底部「弹窗」可弹出独立贴纸窗
-                • 拖动整条顶栏可移动；靠近右边缘松手贴回
-                """,
+                title: L("欢迎使用贴边便签"),
+                body: L("WELCOME_BODY"),
                 color: .glass,
-                tags: ["入门"]
+                tags: [L("入门")]
             )
             notes = [welcome]
             selectedNoteID = welcome.id
@@ -90,9 +89,30 @@ final class NoteStore: ObservableObject {
         }
         let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !q.isEmpty {
-            list = list.filter { $0.searchBlob.contains(q) }
+            list = list.filter { matches($0, query: q) }
         }
         return list.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    /// 拼音索引缓存：noteID → (内容指纹, 全拼, 首字母)
+    private var pinyinCache: [UUID: (Int, String, String)] = [:]
+
+    /// 搜索匹配：原文包含，或（输入是字母时）拼音全拼 / 首字母包含。例：「mc」「maicai」都能搜到「买菜」
+    func matches(_ note: Note, query q: String) -> Bool {
+        let blob = note.searchBlob
+        if blob.contains(q) { return true }
+        let compact = q.replacingOccurrences(of: " ", with: "")
+        guard !compact.isEmpty, compact.allSatisfy({ $0.isASCII && $0.isLetter }) else { return false }
+        let key = blob.hashValue
+        let entry: (Int, String, String)
+        if let hit = pinyinCache[note.id], hit.0 == key {
+            entry = hit
+        } else {
+            let p = Pinyin.of(blob)
+            entry = (key, p.full, p.initials)
+            pinyinCache[note.id] = entry
+        }
+        return entry.1.contains(compact) || entry.2.contains(compact)
     }
 
     var allTags: [String] {
@@ -138,8 +158,11 @@ final class NoteStore: ObservableObject {
     /// - Parameter bumpModified: 是否更新「最后修改时间」并影响列表排序。选中、钉桌面等元数据应传 false。
     func update(id: UUID, bumpModified: Bool = true, mutate: (inout Note) -> Void) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let before = notes[index]
         mutate(&notes[index])
         notes[index].color = notes[index].color.normalized
+        // 内容没变（比如点选便签时编辑器回填同样的文字）就什么都不做，不改修改时间、不重排
+        guard notes[index] != before else { return }
         if bumpModified {
             notes[index].updatedAt = Date()
         }
@@ -192,6 +215,7 @@ final class NoteStore: ObservableObject {
     func hangOnLine(id: UUID, at position: Double? = nil) {
         let pos = position ?? nextLineSlot()
         update(id: id, bumpModified: false) {
+            if !$0.onLine { $0.lineHungAt = Date() }
             $0.onLine = true
             $0.linePosition = min(1, max(0, pos))
         }
@@ -201,7 +225,13 @@ final class NoteStore: ObservableObject {
         update(id: id, bumpModified: false) {
             $0.onLine = false
             $0.linePosition = nil
+            $0.lineHungAt = nil
         }
+    }
+
+    /// 单张卡片的大小；nil = 跟随默认
+    func setLineCardSize(id: UUID, _ size: LineCardSize?) {
+        update(id: id, bumpModified: false) { $0.lineCardSize = size?.rawValue }
     }
 
     func setLinePosition(id: UUID, _ position: Double) {
@@ -216,10 +246,74 @@ final class NoteStore: ObservableObject {
         return note
     }
 
+    /// 把一个网址/文件挂上绳：本地文件只存引用，网页抓标题，其它当文字
+    func hangURL(_ url: URL, at position: Double? = nil) {
+        if url.isFileURL {
+            addLineFile(url, at: position)
+        } else if let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" {
+            addLineLink(url, at: position)
+        } else {
+            addLineNote(body: url.absoluteString, at: position)
+        }
+    }
+
+    /// 挂一段文字；纯网址按链接处理
+    func hangText(_ text: String, at position: Double? = nil) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if let url = Note(body: trimmed).webLink { addLineLink(url, at: position) }
+        else { addLineNote(body: text, at: position) }
+    }
+
+    /// 挂满 N 天的卡片自动取下（N ≤ 0 不处理）。旧数据没有挂上时间的，从现在开始计时。
+    func expireLineNotes(afterDays days: Int, now: Date = Date()) {
+        for note in notes where note.onLine && note.lineHungAt == nil {
+            update(id: note.id, bumpModified: false) { $0.lineHungAt = now }
+        }
+        guard days > 0 else { return }
+        let cutoff = now.addingTimeInterval(-Double(days) * 86400)
+        for note in notes where note.onLine {
+            if let at = note.lineHungAt, at < cutoff { takeOffLine(id: note.id) }
+        }
+    }
+
+    /// 挂一个本地文件：只存地址和书签，不复制文件；文件被移动/改名后靠书签找回
+    @discardableResult
+    func addLineFile(_ url: URL, at position: Double? = nil) -> Note {
+        let note = addLineNote(body: url.absoluteString, at: position, color: .glass)
+        let bookmark = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+        update(id: note.id, bumpModified: false) {
+            $0.title = url.lastPathComponent
+            $0.fileBookmark = bookmark
+        }
+        return self.note(id: note.id) ?? note
+    }
+
+    /// 文件卡片指向的当前文件；被移动/改名则按书签更新地址，找不到返回 nil
+    func resolveFile(for id: UUID) -> URL? {
+        guard let note = note(id: id), let link = note.fileLink else { return nil }
+        if let data = note.fileBookmark {
+            var stale = false
+            if let url = try? URL(resolvingBookmarkData: data, options: [.withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale),
+               FileManager.default.fileExists(atPath: url.path) {
+                if stale || url.standardizedFileURL != link.standardizedFileURL {
+                    let fresh = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+                    update(id: id, bumpModified: false) {
+                        $0.body = url.absoluteString
+                        $0.title = url.lastPathComponent
+                        if let fresh { $0.fileBookmark = fresh }
+                    }
+                }
+                return url
+            }
+        }
+        return FileManager.default.fileExists(atPath: link.path) ? link : nil
+    }
+
     /// 挂一个网址：先用域名当标题，再去抓网页标题替换
     @discardableResult
     func addLineLink(_ url: URL, at position: Double? = nil) -> Note {
-        let host = url.host.map { $0.hasPrefix("www.") ? String($0.dropFirst(4)) : $0 } ?? "链接"
+        let host = url.host.map { $0.hasPrefix("www.") ? String($0.dropFirst(4)) : $0 } ?? L("链接")
         let note = addLineNote(body: url.absoluteString, at: position, color: .blue)
         update(id: note.id, bumpModified: false) { $0.title = host }
         LinkTitleFetcher.fetch(url) { [weak self] title in
@@ -472,7 +566,7 @@ final class NoteStore: ObservableObject {
                 return true
             }
         }
-        loadFailure = "数据文件无法读取，已另存为 \(quarantine.lastPathComponent)。为避免覆盖，本次不会保存任何改动。"
+        loadFailure = LF("数据文件无法读取，已另存为 %@。为避免覆盖，本次不会保存任何改动。", quarantine.lastPathComponent)
         return true
     }
 
@@ -553,7 +647,7 @@ final class NoteStore: ObservableObject {
     }
 
     /// 每天第一次保存前，把当前主库复制成 Backups/notes-YYYY-MM-DD.json，保留最近若干天。
-    nonisolated private static func rotateDailyBackup(dbURL: URL, backupsDir: URL) {
+    nonisolated static func rotateDailyBackup(dbURL: URL, backupsDir: URL) {
         let fm = FileManager.default
         guard fm.fileExists(atPath: dbURL.path) else { return }
         let f = DateFormatter()
