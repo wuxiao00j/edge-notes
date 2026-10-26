@@ -29,10 +29,10 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         center.delegate = self
         center.requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
-        let snooze5 = UNNotificationAction(identifier: Self.snooze5, title: "稍后 5 分钟", options: [])
-        let snooze15 = UNNotificationAction(identifier: Self.snooze15, title: "稍后 15 分钟", options: [])
-        let snooze60 = UNNotificationAction(identifier: Self.snooze60, title: "稍后 1 小时", options: [])
-        let open = UNNotificationAction(identifier: Self.openNote, title: "打开便签", options: [.foreground])
+        let snooze5 = UNNotificationAction(identifier: Self.snooze5, title: L("稍后 5 分钟"), options: [])
+        let snooze15 = UNNotificationAction(identifier: Self.snooze15, title: L("稍后 15 分钟"), options: [])
+        let snooze60 = UNNotificationAction(identifier: Self.snooze60, title: L("稍后 1 小时"), options: [])
+        let open = UNNotificationAction(identifier: Self.openNote, title: L("打开便签"), options: [.foreground])
         let category = UNNotificationCategory(
             identifier: Self.categoryID,
             actions: [open, snooze5, snooze15, snooze60],
@@ -124,12 +124,12 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
 
     private func schedule(note: Note, at: Date) {
         let content = UNMutableNotificationContent()
-        content.title = "便签提醒"
+        content.title = L("便签提醒")
         content.categoryIdentifier = Self.categoryID
         content.threadIdentifier = note.id.uuidString
         // 隐私：锁定或全局速藏时不暴露正文
         if note.isLocked || AppSettings.shared.privacyHideBodies {
-            content.body = "有一条私密便签到期"
+            content.body = L("有一条私密便签到期")
         } else {
             content.body = note.displayTitle
         }
@@ -146,8 +146,6 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         guard let store else { return }
         store.select(noteID)
         NoteWindowManager.shared.open(noteID: noteID, store: store, focusEditor: true)
-        EdgePanelController.shared.expand(animated: true)
-        EdgePanelController.shared.makeKeyForEditing()
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -205,7 +203,7 @@ struct ReminderEditor: View {
             HStack(spacing: 10) {
                 Image(systemName: "bell.fill")
                     .foregroundStyle(.orange)
-                Text("定时提醒")
+                Text(L("定时提醒"))
                     .font(.headline)
                 Spacer()
                 Button {
@@ -217,12 +215,12 @@ struct ReminderEditor: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .help("关闭并清除提醒")
-                .accessibilityLabel("关闭并清除提醒")
+                .help(L("关闭并清除提醒"))
+                .accessibilityLabel(L("关闭并清除提醒"))
             }
 
             Toggle(isOn: $enabled) {
-                Text(enabled ? "已开启" : "未开启")
+                Text(enabled ? L("已开启") : L("未开启"))
             }
             .toggleStyle(.switch)
             .onChange(of: enabled) { _, on in
@@ -235,29 +233,29 @@ struct ReminderEditor: View {
 
             if enabled {
                 VStack(alignment: .leading, spacing: 10) {
-                    DatePicker("提醒时间", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker(L("提醒时间"), selection: $date, displayedComponents: [.date, .hourAndMinute])
                         .onChange(of: date) { _, v in
                             store.setReminder(id: noteID, at: v, repeatDays: repeatDays > 0 ? repeatDays : nil)
                         }
 
-                    Picker("重复", selection: $repeatDays) {
-                        Text("不重复").tag(0)
-                        Text("每天").tag(1)
-                        Text("每 7 天").tag(7)
-                        Text("每 30 天").tag(30)
+                    Picker(L("重复"), selection: $repeatDays) {
+                        Text(L("不重复")).tag(0)
+                        Text(L("每天")).tag(1)
+                        Text(L("每 7 天")).tag(7)
+                        Text(L("每 30 天")).tag(30)
                     }
                     .pickerStyle(.menu)
                     .onChange(of: repeatDays) { _, v in
                         store.setReminder(id: noteID, at: date, repeatDays: v > 0 ? v : nil)
                     }
 
-                    Text("快速延后")
+                    Text(L("快速延后"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     HStack(spacing: 10) {
-                        Button("5 分钟") { ReminderManager.shared.snooze(noteID: noteID, minutes: 5); reload() }
-                        Button("15 分钟") { ReminderManager.shared.snooze(noteID: noteID, minutes: 15); reload() }
-                        Button("1 小时") { ReminderManager.shared.snooze(noteID: noteID, minutes: 60); reload() }
+                        Button(L("5 分钟")) { ReminderManager.shared.snooze(noteID: noteID, minutes: 5); reload() }
+                        Button(L("15 分钟")) { ReminderManager.shared.snooze(noteID: noteID, minutes: 15); reload() }
+                        Button(L("1 小时")) { ReminderManager.shared.snooze(noteID: noteID, minutes: 60); reload() }
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -267,13 +265,13 @@ struct ReminderEditor: View {
 
             HStack(spacing: 12) {
                 if enabled || store.note(id: noteID)?.reminderAt != nil {
-                    Button("清除提醒", role: .destructive) {
+                    Button(L("清除提醒"), role: .destructive) {
                         clearAndClose()
                     }
                     .buttonStyle(.bordered)
                 }
                 Spacer()
-                Button("完成") { dismiss() }
+                Button(L("完成")) { dismiss() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }

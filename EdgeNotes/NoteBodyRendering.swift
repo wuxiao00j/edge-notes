@@ -238,7 +238,7 @@ enum NoteBodyRendering {
         attrs[.link] = url
         attrs[.foregroundColor] = NSColor.linkColor
         attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-        attrs[.toolTip] = "点击在浏览器中打开\n" + url.absoluteString
+        attrs[.toolTip] = L("点击在浏览器中打开\n") + url.absoluteString
         if strike {
             attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
         }
@@ -508,7 +508,7 @@ final class EdgeNotesCheckboxAttachment: NSTextAttachment {
     private func refreshImage() {
         let name = isChecked ? "checkmark.circle.fill" : "circle"
         let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-        let img = NSImage(systemSymbolName: name, accessibilityDescription: isChecked ? "已完成" : "待办")?
+        let img = NSImage(systemSymbolName: name, accessibilityDescription: isChecked ? L("已完成") : L("待办"))?
             .withSymbolConfiguration(cfg) ?? NSImage(size: NSSize(width: 14, height: 14))
         self.image = img
         bounds = CGRect(x: 0, y: -3, width: 14, height: 14)

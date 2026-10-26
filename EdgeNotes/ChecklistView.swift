@@ -77,7 +77,7 @@ struct ChecklistBlockView: View {
         Group {
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("待办（拖拽排序 · 完成沉底）")
+                    Text(L("待办（拖拽排序 · 完成沉底）"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     List {
@@ -90,7 +90,7 @@ struct ChecklistBlockView: View {
                                         .foregroundStyle(item.done ? .green : .secondary)
                                 }
                                 .buttonStyle(.plain)
-                                Text(item.text.isEmpty ? "（空）" : item.text)
+                                Text(item.text.isEmpty ? L("（空）") : item.text)
                                     .strikethrough(item.done)
                                     .foregroundStyle(item.done ? .secondary : .primary)
                                     .font(.system(size: 12))

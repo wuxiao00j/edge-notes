@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Sparkle
 
 @main
 struct EdgeNotesApp: App {
@@ -9,20 +10,58 @@ struct EdgeNotesApp: App {
     var body: some Scene {
         Settings {
             Form {
-                Section("窗口") {
-                    Toggle("贴边侧栏（鼠标移到屏幕右边缘呼出）", isOn: Binding(
-                        get: { settings.edgeDockEnabled },
-                        set: { settings.setEdgeDockEnabled($0) }
+                Section(L("挂绳")) {
+                    Toggle(L("挂绳模式（屏幕顶部的晾衣绳）"), isOn: Binding(
+                        get: { settings.clotheslineEnabled },
+                        set: { settings.setClotheslineEnabled($0) }
                     ))
-                    Text("关闭时侧栏平时隐藏，从菜单栏图标「显示/隐藏侧栏」或 \(settings.hotkeyToggle.label) 打开。")
+                    Picker(L("卡片大小"), selection: Binding(
+                        get: { settings.lineCardSize },
+                        set: { settings.setLineCardSize($0) }
+                    )) {
+                        ForEach(LineCardSize.allCases) { size in
+                            Text(size.label).tag(size)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Picker(L("挂满后自动取下"), selection: Binding(
+                        get: { settings.lineAutoRemoveDays },
+                        set: { settings.setLineAutoRemoveDays($0) }
+                    )) {
+                        Text(L("不自动取下")).tag(0)
+                        Text(L("1 天")).tag(1)
+                        Text(L("3 天")).tag(3)
+                        Text(L("7 天")).tag(7)
+                        Text(L("30 天")).tag(30)
+                    }
+                    Toggle(L("钉住挂绳（一直放下，不自动收起）"), isOn: Binding(
+                        get: { settings.linePinnedOpen },
+                        set: { settings.setLinePinnedOpen($0) }
+                    ))
+                    Toggle(L("在全屏 App 中也显示"), isOn: Binding(
+                        get: { settings.lineShowInFullScreen },
+                        set: { settings.setLineShowInFullScreen($0) }
+                    ))
+                    Text(L("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字、链接或文件拖到绳上即可挂起（文件只记位置，不复制）；左右拖动换位置，往下拖出来可放进其它 App；点夹子取下。单击图片看大图，单击文字便签进入编辑。"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Toggle("始终置顶", isOn: Binding(
+                }
+                Section(L("剪贴板历史")) {
+                    Toggle(L("记录复制过的内容，挂在绳上的大卡片里"), isOn: Binding(
+                        get: { settings.clipboardHistoryEnabled },
+                        set: { settings.setClipboardHistoryEnabled($0) }
+                    ))
+                    Text(LF("点卡片里的任意一条即可重新复制（文字、图片、文件）。保留最近 %@ 条；密码管理器等标记为隐私的内容不会记录。", ClipboardHistory.maxEntries))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Section(L("窗口")) {
+                    Toggle(L("便签窗口始终置顶"), isOn: Binding(
                         get: { settings.isAlwaysOnTop },
-                        set: { EdgePanelController.shared.setAlwaysOnTop($0) }
+                        set: { NotesWindowController.shared.setAlwaysOnTop($0) }
                     ))
                     HStack {
-                        Text("默认透明度")
+                        Text(L("默认透明度"))
                         Slider(value: Binding(
                             get: { settings.defaultOpacity },
                             set: { settings.setDefaultOpacity($0) }
@@ -30,32 +69,23 @@ struct EdgeNotesApp: App {
                         Text("\(Int(settings.defaultOpacity * 100))%")
                             .frame(width: 40)
                     }
-                    Toggle("登录时打开", isOn: Binding(
+                    Toggle(L("登录时打开"), isOn: Binding(
                         get: { settings.launchAtLogin },
                         set: { settings.setLaunchAtLogin($0) }
                     ))
                 }
-                Section("挂绳") {
-                    Toggle("挂绳模式（屏幕顶部的晾衣绳）", isOn: Binding(
-                        get: { settings.clotheslineEnabled },
-                        set: { settings.setClotheslineEnabled($0) }
-                    ))
-                    Text("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字或文件拖到绳上即可挂起；左右拖动换位置，往下拖出来可放进其它 App 的输入框；点夹子取下。单击图片看大图，单击文字便签进入编辑。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Section("隐私") {
-                    Toggle("速藏正文（列表与通知不显示内容）", isOn: Binding(
+                Section(L("隐私")) {
+                    Toggle(L("速藏正文（列表、挂绳与通知不显示内容）"), isOn: Binding(
                         get: { settings.privacyHideBodies },
                         set: { settings.setPrivacyHideBodies($0) }
                     ))
-                    Text("锁定的单条便签始终在通知里隐藏正文。")
+                    Text(L("锁定的单条便签始终在通知里隐藏正文。"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Section("快捷键（点击后按下新组合）") {
+                Section(L("快捷键（点击后按下新组合）")) {
                     HotKeyRecorderButton(
-                        title: "显示/隐藏侧栏",
+                        title: L("显示/隐藏全部便签"),
                         chord: Binding(
                             get: { settings.hotkeyToggle },
                             set: { settings.setHotkeyToggle($0) }
@@ -63,7 +93,7 @@ struct EdgeNotesApp: App {
                         onChange: { HotKeyManager.shared.reloadFromSettings() }
                     )
                     HotKeyRecorderButton(
-                        title: "极速新建",
+                        title: L("新建挂绳便签"),
                         chord: Binding(
                             get: { settings.hotkeyCapture },
                             set: { settings.setHotkeyCapture($0) }
@@ -71,84 +101,81 @@ struct EdgeNotesApp: App {
                         onChange: { HotKeyManager.shared.reloadFromSettings() }
                     )
                     HotKeyRecorderButton(
-                        title: "选区/剪贴板 → 便签",
+                        title: L("剪贴板 → 挂绳"),
                         chord: Binding(
-                            get: { settings.hotkeyPaste },
-                            set: { settings.setHotkeyPaste($0) }
+                            get: { settings.hotkeyHang },
+                            set: { settings.setHotkeyHang($0) }
                         ),
                         onChange: { HotKeyManager.shared.reloadFromSettings() }
                     )
-                    Text("选区贴入需要「系统设置 → 隐私与安全性 → 辅助功能」允许贴边便签；未授权时自动改用剪贴板。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if !SelectionCapture.accessibilityTrusted() {
-                        Button("请求辅助功能权限…") {
-                            SelectionCapture.promptAccessibilityIfNeeded()
-                        }
-                    } else {
-                        Label("已获得辅助功能权限", systemImage: "checkmark.seal.fill")
-                            .foregroundStyle(.green)
-                            .font(.caption)
-                    }
                 }
-                Section("数据") {
+                Section(L("更新")) {
+                    Toggle(L("自动检查更新"), isOn: Binding(
+                        get: { appDelegate.updater?.updater.automaticallyChecksForUpdates ?? false },
+                        set: { appDelegate.updater?.updater.automaticallyChecksForUpdates = $0 }
+                    ))
+                    Button(L("检查更新…")) { appDelegate.updater?.checkForUpdates(nil) }
+                }
+                Section(L("数据")) {
                     HStack {
                         Text("~/Library/Application Support/EdgeNotes/")
                             .font(.caption)
                             .textSelection(.enabled)
                         Spacer()
-                        Button("在 Finder 中打开") {
+                        Button(L("在 Finder 中打开")) {
                             NSWorkspace.shared.open(URL(fileURLWithPath: appDelegate.store.dataDirectoryPath))
                         }
                     }
-                    Text("离线可用；每天自动备份到 Backups/（保留 \(NoteStore.dailyBackupsKept) 天），回收站 \(NoteStore.trashRetentionDays) 天后自动清空。侧栏「…」可导出或手动备份。无 iCloud。")
+                    Text(LF("离线可用；每天自动备份到 Backups/（保留 %@ 天），回收站 %@ 天后自动清空。「全部便签」窗口的「…」菜单可导出或手动备份。无 iCloud。", NoteStore.dailyBackupsKept, NoteStore.trashRetentionDays))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             .padding(20)
-            .frame(width: 480)
+            .frame(width: 500)
         }
     }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    let store = NoteStore()
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    /// 跑单元测试时宿主 App 用临时目录，绝不碰真实数据
+    static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    let store = NoteStore(directory: AppDelegate.isRunningTests
+        ? FileManager.default.temporaryDirectory.appendingPathComponent("EdgeNotesTestHost-\(UUID().uuidString)")
+        : nil)
     private var statusItem: NSStatusItem?
-    private var pinItem: NSMenuItem?
-    private var privacyItem: NSMenuItem?
-    private var lineItem: NSMenuItem?
-    private var dockItem: NSMenuItem?
+    /// Sparkle 自动更新（从 GitHub 上的 appcast.xml 检查新版本）
+    private(set) var updater: SPUStandardUpdaterController?
+
+    /// 给快捷指令等找到当前的数据
+    private(set) static var current: AppDelegate?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        AppDelegate.current = self
+        guard !Self.isRunningTests else { return }
         // 通知代理要在启动完成前设好，才能处理「点通知把 App 拉起来」
         ReminderManager.shared.start(store: store)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // 单元测试宿主：不装窗口、快捷键、剪贴板监听
+        guard !Self.isRunningTests else { return }
+        updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
         NoteWindowManager.shared.attach(store: store)
-
-        EdgePanelController.shared.install(
+        NotesWindowController.shared.install(
             rootView: ContentView().environmentObject(store)
         )
-        EdgePanelController.shared.applyWindowLevel()
-
-        for note in store.notes where note.pinnedToDesktop && !note.isArchived {
-            NoteWindowManager.shared.open(noteID: note.id, store: store, focusEditor: false)
-        }
 
         HotKeyManager.shared.register(
-            toggle: { [weak self] in
-                EdgePanelController.shared.toggle()
-                self?.refreshPanel()
-            },
-            capture: { [weak self] in self?.instantCapture() },
-            paste: { [weak self] in self?.pasteSelectionOrClipboard() }
+            toggle: { NotesWindowController.shared.toggle() },
+            capture: { [weak self] in self?.newLineNote() },
+            hang: { ClotheslineController.shared.hangClipboard() }
         )
 
+        ClipboardHistory.shared.start(dataDirectory: URL(fileURLWithPath: store.dataDirectoryPath))
         ClotheslineController.shared.install(store: store)
 
         setupStatusItem()
@@ -156,10 +183,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let failure = store.loadFailure {
             let alert = NSAlert()
             alert.alertStyle = .critical
-            alert.messageText = "便签数据读取失败"
-            alert.informativeText = failure + "\n\n可在数据目录的 Backups/ 中找到每日备份。"
-            alert.addButton(withTitle: "打开数据目录")
-            alert.addButton(withTitle: "好")
+            alert.messageText = L("便签数据读取失败")
+            alert.informativeText = failure + L("\n\n可在数据目录的 Backups/ 中找到每日备份。")
+            alert.addButton(withTitle: L("打开数据目录"))
+            alert.addButton(withTitle: L("好"))
             NSApp.activate(ignoringOtherApps: true)
             if alert.runModal() == .alertFirstButtonReturn {
                 NSWorkspace.shared.open(URL(fileURLWithPath: store.dataDirectoryPath))
@@ -169,103 +196,93 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         store.flush()
+        ClipboardHistory.shared.flush()
         HotKeyManager.shared.unregister()
     }
 
-    private func refreshPanel() {
-        EdgePanelController.shared.updateRootView(
-            ContentView().environmentObject(store)
-        )
-    }
-
-    private func instantCapture() {
-        let note = store.addNote(select: true)
-        refreshPanel()
-        EdgePanelController.shared.expand(animated: true)
-        EdgePanelController.shared.makeKeyForEditing()
+    /// 新建一张挂在绳上的便签，并在小编辑窗里开始输入
+    private func newLineNote() {
+        let note = store.addLineNote(body: "")
+        ClotheslineController.shared.flash()
         NoteWindowManager.shared.open(noteID: note.id, store: store, focusEditor: true)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func pasteSelectionOrClipboard() {
-        let result = SelectionCapture.capturePreferringSelection()
-        var body = result.text
-        if body.isEmpty {
-            body = "（未读到选区或剪贴板。若要用选区，请在设置里授予辅助功能权限。）"
-        }
-        let note = store.addNote(title: "", body: body, select: true)
-        refreshPanel()
-        NoteWindowManager.shared.open(noteID: note.id, store: store, focusEditor: true)
-        EdgePanelController.shared.expand(animated: true)
-        AppSettings.shared.setMainViewMode(.desktop)
-    }
+    // MARK: - 菜单栏
 
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: "贴边便签")
-            button.toolTip = "贴边便签"
+            button.image = NSImage(systemSymbolName: "note.text", accessibilityDescription: L("贴边便签"))
+            button.toolTip = L("贴边便签")
         }
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "显示/隐藏侧栏", action: #selector(togglePanel), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "极速新建", action: #selector(capture), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "选区/剪贴板 → 新便签", action: #selector(pasteNote), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "新建到侧栏", action: #selector(newSidebar), keyEquivalent: "n"))
-        menu.addItem(NSMenuItem(title: "贴回右边缘", action: #selector(redock), keyEquivalent: ""))
-        menu.addItem(NSMenuItem.separator())
-        let pin = NSMenuItem(title: "始终置顶", action: #selector(togglePin), keyEquivalent: "")
-        pin.state = AppSettings.shared.isAlwaysOnTop ? .on : .off
-        pinItem = pin
-        menu.addItem(pin)
-        let priv = NSMenuItem(title: "速藏正文", action: #selector(togglePrivacy), keyEquivalent: "")
-        priv.state = AppSettings.shared.privacyHideBodies ? .on : .off
-        privacyItem = priv
-        menu.addItem(priv)
-        let line = NSMenuItem(title: "挂绳模式", action: #selector(toggleLine), keyEquivalent: "")
-        line.state = AppSettings.shared.clotheslineEnabled ? .on : .off
-        lineItem = line
-        menu.addItem(line)
-        let dock = NSMenuItem(title: "贴边呼出侧栏", action: #selector(toggleDock), keyEquivalent: "")
-        dock.state = AppSettings.shared.edgeDockEnabled ? .on : .off
-        dockItem = dock
-        menu.addItem(dock)
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "退出", action: #selector(quit), keyEquivalent: "q"))
+        menu.delegate = self
         item.menu = menu
         statusItem = item
     }
 
-    @objc private func togglePanel() { EdgePanelController.shared.toggle() }
-    @objc private func capture() { instantCapture() }
-    @objc private func pasteNote() { pasteSelectionOrClipboard() }
-    @objc private func newSidebar() {
-        store.addNote(select: true)
-        refreshPanel()
-        EdgePanelController.shared.expand(animated: true)
-        EdgePanelController.shared.makeKeyForEditing()
+    /// 每次打开菜单时重建，勾选状态与快捷键提示始终是最新的
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        let s = AppSettings.shared
+        menu.removeAllItems()
+        func add(_ title: String, _ action: Selector, on: Bool? = nil) {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            if let on { item.state = on ? .on : .off }
+            menu.addItem(item)
+        }
+        add(LF("全部便签\t%@", s.hotkeyToggle.label), #selector(toggleNotesWindow))
+        add(LF("新建挂绳便签\t%@", s.hotkeyCapture.label), #selector(newLineNoteAction))
+        add(LF("剪贴板 → 挂绳\t%@", s.hotkeyHang.label), #selector(hangClipboard))
+        menu.addItem(.separator())
+        add(L("挂绳模式"), #selector(toggleLine), on: s.clotheslineEnabled)
+        add(L("钉住挂绳"), #selector(togglePinLine), on: s.linePinnedOpen)
+        add(L("剪贴板历史"), #selector(toggleClipboardHistory), on: s.clipboardHistoryEnabled)
+        let sizeItem = NSMenuItem(title: L("卡片大小"), action: nil, keyEquivalent: "")
+        let sizeMenu = NSMenu()
+        for size in LineCardSize.allCases {
+            let it = NSMenuItem(title: size.label, action: #selector(setCardSize(_:)), keyEquivalent: "")
+            it.target = self
+            it.representedObject = size.rawValue
+            it.state = s.lineCardSize == size ? .on : .off
+            sizeMenu.addItem(it)
+        }
+        sizeItem.submenu = sizeMenu
+        menu.addItem(sizeItem)
+        menu.addItem(.separator())
+        add(L("便签窗口始终置顶"), #selector(togglePin), on: s.isAlwaysOnTop)
+        add(L("速藏正文"), #selector(togglePrivacy), on: s.privacyHideBodies)
+        menu.addItem(.separator())
+        add(L("设置…"), #selector(openSettings))
+        add(L("检查更新…"), #selector(checkForUpdates))
+        let quit = NSMenuItem(title: L("退出"), action: #selector(quit), keyEquivalent: "q")
+        quit.target = self
+        menu.addItem(quit)
     }
-    @objc private func redock() { EdgePanelController.shared.redockExpanded(animated: true) }
-    @objc private func togglePin() {
-        let next = !AppSettings.shared.isAlwaysOnTop
-        EdgePanelController.shared.setAlwaysOnTop(next)
-        pinItem?.state = next ? .on : .off
-        refreshPanel()
+
+    @objc private func toggleNotesWindow() { NotesWindowController.shared.toggle() }
+    @objc private func newLineNoteAction() { newLineNote() }
+    @objc private func hangClipboard() { ClotheslineController.shared.hangClipboard() }
+    @objc private func toggleLine() { AppSettings.shared.setClotheslineEnabled(!AppSettings.shared.clotheslineEnabled) }
+    @objc private func togglePinLine() { AppSettings.shared.setLinePinnedOpen(!AppSettings.shared.linePinnedOpen) }
+    @objc private func toggleClipboardHistory() {
+        AppSettings.shared.setClipboardHistoryEnabled(!AppSettings.shared.clipboardHistoryEnabled)
     }
-    @objc private func togglePrivacy() {
-        let next = !AppSettings.shared.privacyHideBodies
-        AppSettings.shared.setPrivacyHideBodies(next)
-        privacyItem?.state = next ? .on : .off
-        refreshPanel()
+    @objc private func setCardSize(_ sender: NSMenuItem) {
+        if let raw = sender.representedObject as? String, let size = LineCardSize(rawValue: raw) {
+            AppSettings.shared.setLineCardSize(size)
+        }
     }
-    @objc private func toggleDock() {
-        let next = !AppSettings.shared.edgeDockEnabled
-        AppSettings.shared.setEdgeDockEnabled(next)
-        dockItem?.state = next ? .on : .off
+    @objc private func togglePin() { NotesWindowController.shared.setAlwaysOnTop(!AppSettings.shared.isAlwaysOnTop) }
+    @objc private func togglePrivacy() { AppSettings.shared.setPrivacyHideBodies(!AppSettings.shared.privacyHideBodies) }
+    @objc private func checkForUpdates() {
+        NSApp.activate(ignoringOtherApps: true)
+        updater?.checkForUpdates(nil)
     }
-    @objc private func toggleLine() {
-        let next = !AppSettings.shared.clotheslineEnabled
-        AppSettings.shared.setClotheslineEnabled(next)
-        lineItem?.state = next ? .on : .off
+    @objc private func openSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
     @objc private func quit() {
         store.flush()

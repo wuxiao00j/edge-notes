@@ -47,10 +47,10 @@ extension HotKeyChord {
             UInt32(kVK_ANSI_3): "3", UInt32(kVK_ANSI_4): "4", UInt32(kVK_ANSI_5): "5",
             UInt32(kVK_ANSI_6): "6", UInt32(kVK_ANSI_7): "7", UInt32(kVK_ANSI_8): "8",
             UInt32(kVK_ANSI_9): "9",
-            UInt32(kVK_Space): "空格", UInt32(kVK_Return): "↩", UInt32(kVK_Escape): "⎋",
+            UInt32(kVK_Space): L("空格"), UInt32(kVK_Return): "↩", UInt32(kVK_Escape): "⎋",
             UInt32(kVK_Tab): "⇥", UInt32(kVK_Delete): "⌫",
         ]
-        return map[keyCode] ?? "键\(keyCode)"
+        return map[keyCode] ?? LF("键%@", keyCode)
     }
 }
 
@@ -65,13 +65,13 @@ struct HotKeyRecorderButton: View {
         HStack {
             Text(title)
             Spacer()
-            Button(recording ? "按下新快捷键…" : chord.label) {
+            Button(recording ? L("按下新快捷键…") : chord.label) {
                 toggleRecording()
             }
             .buttonStyle(.bordered)
             .foregroundStyle(recording ? Color.accentColor : .primary)
             if recording {
-                Button("取消") { stopRecording() }.buttonStyle(.borderless)
+                Button(L("取消")) { stopRecording() }.buttonStyle(.borderless)
             }
         }
         .onDisappear { stopRecording() }

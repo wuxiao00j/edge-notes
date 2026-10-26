@@ -11,35 +11,53 @@
 		14AE61D34EDA4E5B416520F3 /* NoteBodyRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */; };
 		153726F147F684A45D663F5B /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 869A8E8071FAB91C04EC05DA /* InfoPlist.strings */; };
 		2238CA799A31A26662CCFD21 /* MarkdownTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF06525E7B1DAED548037070 /* MarkdownTextView.swift */; };
+		29BD4EC0EFDC7A3332E7CE78 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0237D3B0B1F6C56F0F4D8240 /* Intents.swift */; };
 		2BD70FD7E366DE28C13F6C21 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 83D8F7F98083ADB2970A21DF /* Assets.xcassets */; };
 		2D49BE219264D65B5A8926FE /* ReminderManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */; };
 		38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D501332BF4D2276C8649DD5F /* ContentView.swift */; };
+		3C57891A6D08F21EEBD4B3B7 /* ClipboardHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4595EDB0B007EF3DA7780BFE /* ClipboardHistory.swift */; };
 		414AF6EFFBAFB416C9A203FA /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */; };
 		4A6E5AFC6D015CB2D8AC0660 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 4AE65A150BECB382C555FE36 /* Localizable.strings */; };
 		4AA8AFCF95EE1784DB4B1A4F /* Clothesline.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0D89A25A23DE636483AACC /* Clothesline.swift */; };
-		652618A668A584FE7C732CDB /* SelectionCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */; };
 		6540821F4746B6357EDECD0A /* GlassChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */; };
+		6EFAA1FD59D81CA258CF9EDC /* NotesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BFFEC0A87FC7CF5D8AD6B9 /* NotesWindowController.swift */; };
 		8761FBE50F05FAFD1607371E /* HotKeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */; };
 		88E171736BF715A924708995 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69A5704D1CEF62087CD9F33 /* AppSettings.swift */; };
 		A31C0EB1132B983476204F56 /* StickyChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */; };
 		A53BCDE2928B703AB54C72E5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616053B9B8ADF513796189C6 /* Note.swift */; };
+		ABDC1663BDBE8462578BE63E /* Attachments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73975FBA9A1F8658F924882D /* Attachments.swift */; };
 		B0FF348A7AACFE792E40297A /* NoteWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */; };
+		BAE3704AD0C6EAE969CF18ED /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = EA33C4437BC8B7D23FD00A79 /* Sparkle */; };
 		D6995481C52837A4D4A491CC /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7460BAFECA654532B30EBE51 /* ChecklistView.swift */; };
-		E9C55BB49942BEAF81EF5637 /* EdgePanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */; };
+		E9C0CDD32347239579315E7A /* EdgeNotesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15A5114A34A41CE8BF7A369 /* EdgeNotesTests.swift */; };
 		FDE753E86D4E5A3733E282D7 /* EdgeNotesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28890B7636D0E35CED72261A /* EdgeNotesApp.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		95AFE4B50A928721F115A67F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5394B7570B9468C0A82FD053 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EBCD67A5FEFA751C95CBDBBD;
+			remoteInfo = EdgeNotes;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		0237D3B0B1F6C56F0F4D8240 /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
+		04BFFEC0A87FC7CF5D8AD6B9 /* NotesWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesWindowController.swift; sourceTree = "<group>"; };
 		0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteBodyRendering.swift; sourceTree = "<group>"; };
 		122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyChrome.swift; sourceTree = "<group>"; };
 		28890B7636D0E35CED72261A /* EdgeNotesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNotesApp.swift; sourceTree = "<group>"; };
-		2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionCapture.swift; sourceTree = "<group>"; };
-		2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePanelController.swift; sourceTree = "<group>"; };
 		3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManager.swift; sourceTree = "<group>"; };
+		4595EDB0B007EF3DA7780BFE /* ClipboardHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHistory.swift; sourceTree = "<group>"; };
 		616053B9B8ADF513796189C6 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassChrome.swift; sourceTree = "<group>"; };
 		6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderManager.swift; sourceTree = "<group>"; };
+		73975FBA9A1F8658F924882D /* Attachments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Attachments.swift; sourceTree = "<group>"; };
+		742CFF284DDE4C1E0B3F617F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		7460BAFECA654532B30EBE51 /* ChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistView.swift; sourceTree = "<group>"; };
+		7A94F4C1ED764D9EFE465147 /* EdgeNotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EdgeNotesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7ACA902DEB8A0E80C9876C8E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStore.swift; sourceTree = "<group>"; };
 		83D8F7F98083ADB2970A21DF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -48,6 +66,7 @@
 		C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyRecorder.swift; sourceTree = "<group>"; };
 		CF0D89A25A23DE636483AACC /* Clothesline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clothesline.swift; sourceTree = "<group>"; };
 		D00621EAA3C328DF25DBB879 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		D15A5114A34A41CE8BF7A369 /* EdgeNotesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNotesTests.swift; sourceTree = "<group>"; };
 		D501332BF4D2276C8649DD5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D57F02F0CFDA021BD868DA88 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		DF78764C54FD9F6A0376C54E /* EdgeNotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EdgeNotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -55,11 +74,31 @@
 		F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		8C4FB276CAA95785B46195C9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BAE3704AD0C6EAE969CF18ED /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
+		40AF3BB36822593DDB4D3C4A /* EdgeNotesTests */ = {
+			isa = PBXGroup;
+			children = (
+				D15A5114A34A41CE8BF7A369 /* EdgeNotesTests.swift */,
+			);
+			path = EdgeNotesTests;
+			sourceTree = "<group>";
+		};
 		809202A0D238080D2BFF4EB1 = {
 			isa = PBXGroup;
 			children = (
 				DCFFD8291FC787E03943AA46 /* EdgeNotes */,
+				40AF3BB36822593DDB4D3C4A /* EdgeNotesTests */,
 				8E1A0C367FFC15E0293A9F83 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -68,6 +107,7 @@
 			isa = PBXGroup;
 			children = (
 				DF78764C54FD9F6A0376C54E /* EdgeNotes.app */,
+				7A94F4C1ED764D9EFE465147 /* EdgeNotesTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -77,21 +117,24 @@
 			children = (
 				F69A5704D1CEF62087CD9F33 /* AppSettings.swift */,
 				83D8F7F98083ADB2970A21DF /* Assets.xcassets */,
+				73975FBA9A1F8658F924882D /* Attachments.swift */,
 				7460BAFECA654532B30EBE51 /* ChecklistView.swift */,
+				4595EDB0B007EF3DA7780BFE /* ClipboardHistory.swift */,
 				CF0D89A25A23DE636483AACC /* Clothesline.swift */,
 				D501332BF4D2276C8649DD5F /* ContentView.swift */,
 				28890B7636D0E35CED72261A /* EdgeNotesApp.swift */,
-				2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */,
 				69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */,
 				F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */,
 				C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */,
+				742CFF284DDE4C1E0B3F617F /* Info.plist */,
+				0237D3B0B1F6C56F0F4D8240 /* Intents.swift */,
 				BF06525E7B1DAED548037070 /* MarkdownTextView.swift */,
 				616053B9B8ADF513796189C6 /* Note.swift */,
 				0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */,
 				7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */,
+				04BFFEC0A87FC7CF5D8AD6B9 /* NotesWindowController.swift */,
 				3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */,
 				6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */,
-				2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */,
 				122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */,
 				869A8E8071FAB91C04EC05DA /* InfoPlist.strings */,
 				4AE65A150BECB382C555FE36 /* Localizable.strings */,
@@ -108,6 +151,7 @@
 			buildPhases = (
 				81B2B82B474E4E982CC55846 /* Sources */,
 				A175AE29889D9BD1ED465BA7 /* Resources */,
+				8C4FB276CAA95785B46195C9 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -115,10 +159,29 @@
 			);
 			name = EdgeNotes;
 			packageProductDependencies = (
+				EA33C4437BC8B7D23FD00A79 /* Sparkle */,
 			);
 			productName = EdgeNotes;
 			productReference = DF78764C54FD9F6A0376C54E /* EdgeNotes.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F305DCE787927859D19847AA /* EdgeNotesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 79B378D2CD34FE443381B33E /* Build configuration list for PBXNativeTarget "EdgeNotesTests" */;
+			buildPhases = (
+				2F284F46F8088CB0F81D35CB /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				45AF3D2A5A156306DCCECFBB /* PBXTargetDependency */,
+			);
+			name = EdgeNotesTests;
+			packageProductDependencies = (
+			);
+			productName = EdgeNotesTests;
+			productReference = 7A94F4C1ED764D9EFE465147 /* EdgeNotesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -141,12 +204,16 @@
 			);
 			mainGroup = 809202A0D238080D2BFF4EB1;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EA46B7E3E8D126821DDD5981 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8E1A0C367FFC15E0293A9F83 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				EBCD67A5FEFA751C95CBDBBD /* EdgeNotes */,
+				F305DCE787927859D19847AA /* EdgeNotesTests */,
 			);
 		};
 /* End PBXProject section */
@@ -165,31 +232,49 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2F284F46F8088CB0F81D35CB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E9C0CDD32347239579315E7A /* EdgeNotesTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		81B2B82B474E4E982CC55846 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				88E171736BF715A924708995 /* AppSettings.swift in Sources */,
+				ABDC1663BDBE8462578BE63E /* Attachments.swift in Sources */,
 				D6995481C52837A4D4A491CC /* ChecklistView.swift in Sources */,
+				3C57891A6D08F21EEBD4B3B7 /* ClipboardHistory.swift in Sources */,
 				4AA8AFCF95EE1784DB4B1A4F /* Clothesline.swift in Sources */,
 				38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */,
 				FDE753E86D4E5A3733E282D7 /* EdgeNotesApp.swift in Sources */,
-				E9C55BB49942BEAF81EF5637 /* EdgePanelController.swift in Sources */,
 				6540821F4746B6357EDECD0A /* GlassChrome.swift in Sources */,
 				414AF6EFFBAFB416C9A203FA /* HotKeyManager.swift in Sources */,
 				8761FBE50F05FAFD1607371E /* HotKeyRecorder.swift in Sources */,
+				29BD4EC0EFDC7A3332E7CE78 /* Intents.swift in Sources */,
 				2238CA799A31A26662CCFD21 /* MarkdownTextView.swift in Sources */,
 				A53BCDE2928B703AB54C72E5 /* Note.swift in Sources */,
 				14AE61D34EDA4E5B416520F3 /* NoteBodyRendering.swift in Sources */,
 				06E323DF307AD36D96B0D563 /* NoteStore.swift in Sources */,
 				B0FF348A7AACFE792E40297A /* NoteWindowManager.swift in Sources */,
+				6EFAA1FD59D81CA258CF9EDC /* NotesWindowController.swift in Sources */,
 				2D49BE219264D65B5A8926FE /* ReminderManager.swift in Sources */,
-				652618A668A584FE7C732CDB /* SelectionCapture.swift in Sources */,
 				A31C0EB1132B983476204F56 /* StickyChrome.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		45AF3D2A5A156306DCCECFBB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EBCD67A5FEFA751C95CBDBBD /* EdgeNotes */;
+			targetProxy = 95AFE4B50A928721F115A67F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		4AE65A150BECB382C555FE36 /* Localizable.strings */ = {
@@ -250,7 +335,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -269,7 +354,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.barry.EdgeNotes;
@@ -318,7 +403,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -343,7 +428,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -362,11 +447,30 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = EdgeNotes/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		7029D8F273372B8C40E37717 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.barry.EdgeNotesTests;
+				PRODUCT_NAME = EdgeNotesTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EdgeNotes.app/Contents/MacOS/EdgeNotes";
 			};
 			name = Debug;
 		};
@@ -376,11 +480,30 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = EdgeNotes/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		C24FC41E7AACE3D4CF612D94 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.barry.EdgeNotesTests;
+				PRODUCT_NAME = EdgeNotesTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EdgeNotes.app/Contents/MacOS/EdgeNotes";
 			};
 			name = Release;
 		};
@@ -396,6 +519,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		79B378D2CD34FE443381B33E /* Build configuration list for PBXNativeTarget "EdgeNotesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7029D8F273372B8C40E37717 /* Debug */,
+				C24FC41E7AACE3D4CF612D94 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		C68A950814CB92E574B34A51 /* Build configuration list for PBXNativeTarget "EdgeNotes" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -406,6 +538,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EA46B7E3E8D126821DDD5981 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.6.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EA33C4437BC8B7D23FD00A79 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EA46B7E3E8D126821DDD5981 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5394B7570B9468C0A82FD053 /* Project object */;
 }

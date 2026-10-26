@@ -30,8 +30,8 @@ struct StickyHeaderBar: View {
                         Circle().fill(Color.red.opacity(0.85)).frame(width: 10, height: 10)
                     }
                     .buttonStyle(.plain)
-                    .help("关闭（不退出）")
-                    .accessibilityLabel("关闭窗口")
+                    .help(L("关闭（不退出）"))
+                    .accessibilityLabel(L("关闭窗口"))
                     .padding(.trailing, 4)
                 }
 
@@ -56,8 +56,8 @@ struct StickyHeaderBar: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .help(isEditing ? "完成编辑，回到预览" : "开始编辑正文")
-                    .accessibilityLabel(isEditing ? "完成编辑" : "编辑")
+                    .help(isEditing ? L("完成编辑，回到预览") : L("开始编辑正文"))
+                    .accessibilityLabel(isEditing ? L("完成编辑") : L("编辑"))
                     .foregroundStyle(isEditing ? Color.accentColor : Color.primary)
 
                     if let onNew {
@@ -67,8 +67,8 @@ struct StickyHeaderBar: View {
                                 .frame(width: 22, height: 22)
                         }
                         .buttonStyle(.plain)
-                        .help("新建一条便签")
-                        .accessibilityLabel("新建便签")
+                        .help(L("新建一条便签"))
+                        .accessibilityLabel(L("新建便签"))
                     }
                 }
 
@@ -80,8 +80,8 @@ struct StickyHeaderBar: View {
                                 .frame(width: 22, height: 22)
                         }
                         .buttonStyle(.plain)
-                        .help(sidebarHidden ? "显示左侧笔记列表" : "隐藏左侧笔记列表")
-                        .accessibilityLabel(sidebarHidden ? "显示列表" : "隐藏列表")
+                        .help(sidebarHidden ? L("显示左侧笔记列表") : L("隐藏左侧笔记列表"))
+                        .accessibilityLabel(sidebarHidden ? L("显示列表") : L("隐藏列表"))
                     }
 
                     Button(action: onTogglePin) {
@@ -90,8 +90,8 @@ struct StickyHeaderBar: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .help(isAlwaysOnTop ? "取消始终置顶" : "始终置顶")
-                    .accessibilityLabel(isAlwaysOnTop ? "取消置顶" : "置顶")
+                    .help(isAlwaysOnTop ? L("取消始终置顶") : L("始终置顶"))
+                    .accessibilityLabel(isAlwaysOnTop ? L("取消置顶") : L("置顶"))
                     .foregroundStyle(isAlwaysOnTop ? Color.accentColor : Color.secondary)
 
                     if let onPrivacyQuickHide {
@@ -101,8 +101,8 @@ struct StickyHeaderBar: View {
                                 .frame(width: 22, height: 22)
                         }
                         .buttonStyle(.plain)
-                        .help(privacyOn ? "取消速藏正文" : "速藏正文（预览时隐藏内容）")
-                        .accessibilityLabel(privacyOn ? "取消速藏" : "速藏正文")
+                        .help(privacyOn ? L("取消速藏正文") : L("速藏正文（预览时隐藏内容）"))
+                        .accessibilityLabel(privacyOn ? L("取消速藏") : L("速藏正文"))
                     }
                 }
                 .padding(.leading, 6)
@@ -117,8 +117,8 @@ struct StickyHeaderBar: View {
                             .frame(width: 22, height: 22)
                     }
                     .buttonStyle(.plain)
-                    .help("收回面板，贴回屏幕右边缘")
-                    .accessibilityLabel("收回面板")
+                    .help(L("收回面板，贴回屏幕右边缘"))
+                    .accessibilityLabel(L("收回面板"))
                 }
             }
             .padding(.horizontal, 12)
@@ -142,12 +142,12 @@ struct NoteEditorPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if isLocked {
-                Label("已锁定", systemImage: "lock.fill")
+                Label(L("已锁定"), systemImage: "lock.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            TextField("标题（可留空）", text: $title)
+            TextField(L("标题（可留空）"), text: $title)
                 .textFieldStyle(.plain)
                 .font(.system(size: 15, weight: .semibold))
                 .disabled(!isEditing)
@@ -171,11 +171,11 @@ struct NoteEditorPane: View {
                 }
             } else {
                 if privacyHide || isLocked {
-                    Text("内容已隐藏")
+                    Text(L("内容已隐藏"))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else if bodyText.isEmpty {
-                    Text("点「编辑」，或点此处开始编辑…")
+                    Text(L("点「编辑」，或点此处开始编辑…"))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
@@ -197,11 +197,11 @@ struct NoteEditorPane: View {
 
     private var formattingBar: some View {
         HStack(spacing: 8) {
-            Button("粗体") { bridge.bold(); onChange() }.buttonStyle(.borderless)
-            Button("列表") { bridge.list(); onChange() }.buttonStyle(.borderless)
-            Button("待办") { bridge.todo(); onChange() }.buttonStyle(.borderless)
+            Button(L("粗体")) { bridge.bold(); onChange() }.buttonStyle(.borderless)
+            Button(L("列表")) { bridge.list(); onChange() }.buttonStyle(.borderless)
+            Button(L("待办")) { bridge.todo(); onChange() }.buttonStyle(.borderless)
             Spacer()
-            Text("可拖入图片")
+            Text(L("可拖入图片"))
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
         }

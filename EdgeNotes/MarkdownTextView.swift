@@ -191,55 +191,55 @@ final class TypingTextView: NSTextView {
     }
 
     private static let menuZH: [String: String] = [
-        "Cut": "剪切",
-        "Copy": "拷贝",
-        "Paste": "粘贴",
-        "Paste and Match Style": "粘贴并匹配样式",
-        "Delete": "删除",
-        "Select All": "全选",
-        "Font": "字体",
-        "Show Fonts": "显示字体",
-        "Bold": "粗体",
-        "Italic": "斜体",
-        "Underline": "下划线",
-        "Outline": "轮廓",
-        "Styles…": "样式…",
-        "Styles...": "样式…",
-        "Bigger": "加大",
-        "Smaller": "减小",
-        "Kern": "字距",
-        "Ligature": "连字",
-        "Baseline": "基线",
-        "Spelling and Grammar": "拼写和语法",
-        "Show Spelling and Grammar": "显示拼写和语法",
-        "Check Document Now": "立即检查文稿",
-        "Check Spelling While Typing": "键入时检查拼写",
-        "Check Grammar With Spelling": "检查拼写和语法",
-        "Correct Spelling Automatically": "自动纠正拼写",
-        "Substitutions": "替换",
-        "Show Substitutions": "显示替换",
-        "Smart Copy/Paste": "智能拷贝/粘贴",
-        "Smart Quotes": "智能引号",
-        "Smart Dashes": "智能破折号",
-        "Smart Links": "智能链接",
-        "Data Detectors": "数据检测器",
-        "Text Replacement": "文本替换",
-        "Transformations": "转换",
-        "Make Upper Case": "大写",
-        "Make Lower Case": "小写",
-        "Capitalize": "字首大写",
-        "Speech": "朗读",
-        "Start Speaking": "开始朗读",
-        "Stop Speaking": "停止朗读",
-        "Layout Orientation": "布局方向",
-        "Horizontal": "水平",
-        "Vertical": "竖直",
-        "AutoFill": "自动填充",
-        "Share…": "共享…",
-        "Share...": "共享…",
-        "Look Up": "查询",
-        "Search with Google": "使用 Google 搜索",
-        "Translate": "翻译"
+        "Cut": L("剪切"),
+        "Copy": L("拷贝"),
+        "Paste": L("粘贴"),
+        "Paste and Match Style": L("粘贴并匹配样式"),
+        "Delete": L("删除"),
+        "Select All": L("全选"),
+        "Font": L("字体"),
+        "Show Fonts": L("显示字体"),
+        "Bold": L("粗体"),
+        "Italic": L("斜体"),
+        "Underline": L("下划线"),
+        "Outline": L("轮廓"),
+        "Styles…": L("样式…"),
+        "Styles...": L("样式…"),
+        "Bigger": L("加大"),
+        "Smaller": L("减小"),
+        "Kern": L("字距"),
+        "Ligature": L("连字"),
+        "Baseline": L("基线"),
+        "Spelling and Grammar": L("拼写和语法"),
+        "Show Spelling and Grammar": L("显示拼写和语法"),
+        "Check Document Now": L("立即检查文稿"),
+        "Check Spelling While Typing": L("键入时检查拼写"),
+        "Check Grammar With Spelling": L("检查拼写和语法"),
+        "Correct Spelling Automatically": L("自动纠正拼写"),
+        "Substitutions": L("替换"),
+        "Show Substitutions": L("显示替换"),
+        "Smart Copy/Paste": L("智能拷贝/粘贴"),
+        "Smart Quotes": L("智能引号"),
+        "Smart Dashes": L("智能破折号"),
+        "Smart Links": L("智能链接"),
+        "Data Detectors": L("数据检测器"),
+        "Text Replacement": L("文本替换"),
+        "Transformations": L("转换"),
+        "Make Upper Case": L("大写"),
+        "Make Lower Case": L("小写"),
+        "Capitalize": L("字首大写"),
+        "Speech": L("朗读"),
+        "Start Speaking": L("开始朗读"),
+        "Stop Speaking": L("停止朗读"),
+        "Layout Orientation": L("布局方向"),
+        "Horizontal": L("水平"),
+        "Vertical": L("竖直"),
+        "AutoFill": L("自动填充"),
+        "Share…": L("共享…"),
+        "Share...": L("共享…"),
+        "Look Up": L("查询"),
+        "Search with Google": L("使用 Google 搜索"),
+        "Translate": L("翻译")
     ]
 
     private static func localizeMenuTree(_ menu: NSMenu) {
@@ -495,7 +495,7 @@ final class TypingTextView: NSTextView {
             return
         }
         if let url = Self.url(from: pb) {
-            let host = url.host ?? "链接"
+            let host = url.host ?? L("链接")
             let insertRange = selectedRange()
             insertLink(url: url, title: host)
             let titleProbeRange = NSRange(location: insertRange.location, length: (host as NSString).length)
@@ -570,7 +570,7 @@ final class TypingTextView: NSTextView {
             attrs[.link] = url
             attrs[.foregroundColor] = NSColor.linkColor
             attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-            attrs[.toolTip] = "点击在浏览器中打开\n" + url.absoluteString
+            attrs[.toolTip] = L("点击在浏览器中打开\n") + url.absoluteString
             ts.addAttributes(attrs, range: r)
         }
         ts.endEditing()
@@ -768,7 +768,7 @@ final class EditorBridge: ObservableObject {
             let bold = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
             var attrs = tv.typingAttributes
             attrs[.font] = bold
-            let placeholder = NSAttributedString(string: "粗体", attributes: attrs)
+            let placeholder = NSAttributedString(string: L("粗体"), attributes: attrs)
             ts.replaceCharacters(in: range, with: placeholder)
             tv.didChangeText()
             tv.setSelectedRange(NSRange(location: range.location, length: (placeholder.string as NSString).length))
@@ -797,7 +797,7 @@ final class EditorBridge: ObservableObject {
         }
         chunk.append(NSAttributedString(string: "• ", attributes: markerAttrs))
         if range.length == 0 {
-            let placeholder = NSAttributedString(string: "列表项", attributes: tv.typingAttributes)
+            let placeholder = NSAttributedString(string: L("列表项"), attributes: tv.typingAttributes)
             chunk.append(placeholder)
             ts.replaceCharacters(in: range, with: chunk)
             tv.didChangeText()
@@ -841,7 +841,7 @@ final class EditorBridge: ObservableObject {
         boxStr.addAttribute(.font, value: tv.font ?? NSFont.systemFont(ofSize: 13), range: NSRange(location: 0, length: 1))
         chunk.append(boxStr)
         chunk.append(NSAttributedString(string: " ", attributes: tv.typingAttributes))
-        let placeholder = NSAttributedString(string: "待办", attributes: tv.typingAttributes)
+        let placeholder = NSAttributedString(string: L("待办"), attributes: tv.typingAttributes)
         chunk.append(placeholder)
         ts.replaceCharacters(in: range, with: chunk)
         tv.didChangeText()
@@ -849,7 +849,7 @@ final class EditorBridge: ObservableObject {
         tv.setSelectedRange(NSRange(location: start, length: placeholder.length))
     }
 
-    func wrapSelection(left: String, right: String, placeholder: String = "文本") {
+    func wrapSelection(left: String, right: String, placeholder: String = L("文本")) {
         guard let tv = textView, tv.window != nil else { return }
         focus()
         let ns = tv.string as NSString
@@ -865,7 +865,7 @@ final class EditorBridge: ObservableObject {
         }
     }
 
-    func link() { wrapSelection(left: "[", right: "](https://)", placeholder: "链接文字") }
+    func link() { wrapSelection(left: "[", right: "](https://)", placeholder: L("链接文字")) }
 
     func insertMarkdown(_ md: String) {
         guard let tv = textView else { return }

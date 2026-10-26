@@ -4,7 +4,7 @@ import Carbon
 enum HotKeyAction: UInt32 {
     case toggle = 1
     case capture = 2
-    case paste = 3
+    case hang = 4
 }
 
 /// 可自定义全局快捷键（Carbon）。
@@ -12,7 +12,7 @@ enum HotKeyAction: UInt32 {
 final class HotKeyManager {
     static let shared = HotKeyManager()
 
-    private var hotKeyRefs: [EventHotKeyRef?] = [nil, nil, nil, nil]
+    private var hotKeyRefs: [EventHotKeyRef?] = [nil, nil, nil, nil, nil]
     private var handlerRef: EventHandlerRef?
     private var handlers: [HotKeyAction: () -> Void] = [:]
 
@@ -21,10 +21,10 @@ final class HotKeyManager {
     func register(
         toggle: @escaping () -> Void,
         capture: @escaping () -> Void,
-        paste: @escaping () -> Void
+        hang: @escaping () -> Void
     ) {
         unregister()
-        handlers = [.toggle: toggle, .capture: capture, .paste: paste]
+        handlers = [.toggle: toggle, .capture: capture, .hang: hang]
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
         let userData = Unmanaged.passUnretained(self).toOpaque()
@@ -59,13 +59,13 @@ final class HotKeyManager {
         let settings = AppSettings.shared
         install(action: .toggle, chord: settings.hotkeyToggle)
         install(action: .capture, chord: settings.hotkeyCapture)
-        install(action: .paste, chord: settings.hotkeyPaste)
+        install(action: .hang, chord: settings.hotkeyHang)
     }
 
     func reloadFromSettings() {
         let settings = AppSettings.shared
         // Re-register only hotkeys
-        for i in 1...3 {
+        for i in 1...4 {
             if let ref = hotKeyRefs[i] {
                 UnregisterEventHotKey(ref)
                 hotKeyRefs[i] = nil
@@ -73,7 +73,7 @@ final class HotKeyManager {
         }
         install(action: .toggle, chord: settings.hotkeyToggle)
         install(action: .capture, chord: settings.hotkeyCapture)
-        install(action: .paste, chord: settings.hotkeyPaste)
+        install(action: .hang, chord: settings.hotkeyHang)
     }
 
     private func install(action: HotKeyAction, chord: HotKeyChord) {
