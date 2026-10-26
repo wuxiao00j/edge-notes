@@ -20,6 +20,8 @@ A native macOS "clothesline" for notes: a rope under the menu bar drops down whe
 
 见 [Releases](https://github.com/wuxiao00j/edge-notes/releases) 中的 `EdgeNotes-macOS.zip`。解压后将 `EdgeNotes.app` 拖到「应用程序」。之后的新版本会在 App 内提示更新。
 
+> 目前仍是 ad-hoc 签名（苹果公证准备中）。首次打开若被拦截：右键 → 打开，或在「系统设置 → 隐私与安全性」中允许。
+
 ## 快捷键 Shortcuts（设置里可改）
 
 | 功能 | 默认 |
