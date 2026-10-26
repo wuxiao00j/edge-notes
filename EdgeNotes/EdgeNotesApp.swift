@@ -40,7 +40,7 @@ struct EdgeNotesApp: App {
                         get: { settings.clotheslineEnabled },
                         set: { settings.setClotheslineEnabled($0) }
                     ))
-                    Text("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字或文件拖到绳上即可挂起；卡片可拖进其它 App 的输入框；点夹子取下。单击图片看大图，单击文字便签进入编辑。")
+                    Text("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字或文件拖到绳上即可挂起；左右拖动换位置，往下拖出来可放进其它 App 的输入框；点夹子取下。单击图片看大图，单击文字便签进入编辑。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

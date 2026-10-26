@@ -306,6 +306,10 @@ struct ClotheslineView: View {
     @EnvironmentObject private var store: NoteStore
     @ObservedObject private var settings = AppSettings.shared
     @State private var dropTargeted = false
+    /// 正在沿绳子左右拖的卡片的临时位置
+    @State private var dragPositions: [UUID: CGFloat] = [:]
+    /// 上下拖超过这个距离才算「拖出来」，交给系统拖拽
+    private static let pullOutThreshold: CGFloat = 70
     /// 本次拖动是否已转交系统拖拽（手势结束自动复位）
     @GestureState private var handedOff = false
 
@@ -380,24 +384,35 @@ struct ClotheslineView: View {
     }
 
     private func card(_ note: Note, index: Int, width: CGFloat, anchor: CGFloat, sag: CGFloat) -> some View {
-        let t = CGFloat(note.linePosition ?? 0.5)
+        let t = dragPositions[note.id] ?? CGFloat(note.linePosition ?? 0.5)
         let x = xFor(position: t, width: width)
         let ropeY = Rope.y(at: t, anchor: anchor, sag: sag)
         return ClotheslineCard(
             note: note,
             privacy: settings.privacyHideBodies,
             tilt: tilt(for: note.id),
-            isDragging: false,
+            isDragging: dragPositions[note.id] != nil,
             onUnpin: { withAnimation(.easeOut(duration: 0.2)) { store.takeOffLine(id: note.id) } }
         )
         .fixedSize()
         .gesture(
-            // 拖动只用来把内容放进其它 App 的输入框
-            DragGesture(minimumDistance: 4)
-                .updating($handedOff) { _, handed, _ in
+            // 左右拖：沿绳子换位置；上下拖超过阈值：拖出来放进其它 App 的输入框
+            DragGesture(minimumDistance: 4, coordinateSpace: .named("clothesline"))
+                .updating($handedOff) { value, handed, _ in
                     guard !handed else { return }
-                    handed = true
-                    ClotheslineController.shared.beginExternalDrag(of: note, privacy: settings.privacyHideBodies)
+                    if abs(value.translation.height) > Self.pullOutThreshold {
+                        handed = true
+                        dragPositions[note.id] = nil
+                        ClotheslineController.shared.beginExternalDrag(of: note, privacy: settings.privacyHideBodies)
+                    } else {
+                        state.isDraggingCard = true
+                        dragPositions[note.id] = position(forX: value.location.x, width: width)
+                    }
+                }
+                .onEnded { _ in
+                    guard let t = dragPositions.removeValue(forKey: note.id) else { return }
+                    state.isDraggingCard = false
+                    store.setLinePosition(id: note.id, Double(t))
                 }
         )
         .onTapGesture { open(note) }
@@ -405,7 +420,7 @@ struct ClotheslineView: View {
         // 固定高的顶对齐框：卡片顶端（夹子）正好压在绳子上
         .frame(width: Self.slotSize.width, height: Self.slotSize.height, alignment: .top)
         .position(x: x, y: ropeY - 6 + Self.slotSize.height / 2)
-        .zIndex(Double(index))
+        .zIndex(dragPositions[note.id] != nil ? 100 : Double(index))
         .transition(.asymmetric(
             insertion: .offset(y: -80).combined(with: .opacity),
             removal: .offset(y: -60).combined(with: .opacity)
