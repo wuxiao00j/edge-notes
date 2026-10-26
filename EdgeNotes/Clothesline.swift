@@ -83,11 +83,11 @@ final class ClotheslineController: NSObject, NSDraggingSource {
         hideWork?.cancel(); hideWork = nil
         showWork?.cancel(); showWork = nil
         guard !state.expanded else { return }
-        panel.ignoresMouseEvents = false
         panel.orderFrontRegardless()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.68)) {
             state.expanded = true
         }
+        updateClickThrough()
     }
 
     func collapse() {
@@ -159,7 +159,11 @@ final class ClotheslineController: NSObject, NSDraggingSource {
         let mouse = NSEvent.mouseLocation
         let frame = panel.frame
         if state.expanded {
-            if frame.insetBy(dx: -4, dy: -4).contains(mouse) || state.isDraggingCard {
+            updateClickThrough()
+            // 鼠标还在卡片/绳子附近、或正在拖东西过来时保持放下；移到空白处就收起
+            let dragging = NSEvent.pressedMouseButtons != 0 && frame.contains(mouse)
+            let near = interactiveRects().contains { $0.insetBy(dx: -28, dy: -28).contains(mouse) }
+            if near || dragging || state.isDraggingCard {
                 hideWork?.cancel(); hideWork = nil
             } else if hideWork == nil {
                 let work = DispatchWorkItem { [weak self] in
@@ -189,6 +193,40 @@ final class ClotheslineController: NSObject, NSDraggingSource {
                 showWork?.cancel(); showWork = nil
             }
         }
+    }
+
+    /// 挂绳窗口铺满屏幕宽度，但只有卡片、绳子、＋ 按钮要拦截点击；其余空白处让点击穿透到下面的窗口。
+    /// 拖着文件/文字过来时（按着鼠标键）整片都接收，方便放到绳上。
+    private func updateClickThrough() {
+        guard let panel else { return }
+        guard state.expanded else { panel.ignoresMouseEvents = true; return }
+        let mouse = NSEvent.mouseLocation
+        let dragging = NSEvent.pressedMouseButtons != 0 && panel.frame.contains(mouse)
+        let over = interactiveRects().contains { $0.contains(mouse) }
+        let ignore = !(over || dragging || state.isDraggingCard)
+        if panel.ignoresMouseEvents != ignore { panel.ignoresMouseEvents = ignore }
+    }
+
+    /// 可交互区域（屏幕坐标）：每张卡片、沿绳子的一串小矩形、右端 ＋ 按钮
+    private func interactiveRects() -> [NSRect] {
+        guard let panel else { return [] }
+        let f = panel.frame
+        // 视图坐标 y 朝下、原点在左上 → 屏幕坐标
+        func toScreen(_ r: CGRect) -> NSRect {
+            NSRect(x: f.minX + r.minX, y: f.maxY - r.maxY, width: r.width, height: r.height)
+        }
+        var rects = state.cardRects.values.map { toScreen($0.insetBy(dx: -8, dy: -8)) }
+        let x0 = Rope.endPadding, x1 = f.width - Rope.endPadding
+        let segments = 24
+        for i in 0..<segments {
+            let ta = CGFloat(i) / CGFloat(segments), tb = CGFloat(i + 1) / CGFloat(segments)
+            let ya = Rope.y(at: ta, anchor: Rope.expandedAnchor, sag: Rope.expandedSag)
+            let yb = Rope.y(at: tb, anchor: Rope.expandedAnchor, sag: Rope.expandedSag)
+            let xa = x0 + (x1 - x0) * ta, xb = x0 + (x1 - x0) * tb
+            rects.append(toScreen(CGRect(x: xa - 12, y: min(ya, yb) - 12, width: xb - xa + 24, height: abs(yb - ya) + 24)))
+        }
+        rects.append(toScreen(CGRect(x: f.width - Rope.endPadding - 14, y: Rope.expandedAnchor - 16, width: 40, height: 36)))
+        return rects
     }
 
     @objc private func screenParamsChanged() { layout() }
@@ -263,6 +301,8 @@ final class ClotheslineController: NSObject, NSDraggingSource {
 final class ClotheslineState: ObservableObject {
     @Published var expanded = false
     @Published var isDraggingCard = false
+    /// 各卡片在挂绳视图里的位置（y 朝下），用来决定哪里拦截点击；不需要触发重绘
+    var cardRects: [UUID: CGRect] = [:]
 }
 
 // MARK: - Views
@@ -320,7 +360,7 @@ struct ClotheslineView: View {
             let anchor = state.expanded ? Rope.expandedAnchor : Rope.collapsedAnchor
             let sag = state.expanded ? Rope.expandedSag : Rope.collapsedSag
             ZStack(alignment: .topLeading) {
-                // 展开时整片区域可接收拖放；收起时完全透明
+                // 拖放目标：整片区域（只有按着鼠标拖东西过来时窗口才接收鼠标，平时点击会穿透）
                 Color.clear.contentShape(Rectangle())
 
                 RopeShape(anchor: anchor, sag: sag, padding: Rope.endPadding)
@@ -352,6 +392,12 @@ struct ClotheslineView: View {
                 }
             }
             .coordinateSpace(name: "clothesline")
+            .onPreferenceChange(CardFrameKey.self) { frames in
+                MainActor.assumeIsolated { state.cardRects = frames }
+            }
+            .onChange(of: state.expanded) { _, expanded in
+                if !expanded { state.cardRects = [:] }
+            }
             .onDrop(of: [.fileURL, .image, .url, .plainText], isTargeted: $dropTargeted) { providers, location in
                 // 自己的卡片拖回绳上不新建
                 guard ClotheslineController.shared.externalDragNoteID == nil else { return false }
@@ -395,6 +441,9 @@ struct ClotheslineView: View {
             onUnpin: { withAnimation(.easeOut(duration: 0.2)) { store.takeOffLine(id: note.id) } }
         )
         .fixedSize()
+        .background(GeometryReader { g in
+            Color.clear.preference(key: CardFrameKey.self, value: [note.id: g.frame(in: .named("clothesline"))])
+        })
         .gesture(
             // 左右拖：沿绳子换位置；上下拖超过阈值：拖出来放进其它 App 的输入框
             DragGesture(minimumDistance: 4, coordinateSpace: .named("clothesline"))
@@ -696,6 +745,13 @@ struct ClotheslineCard: View {
             return (item.done ? "☑ " : "☐ ") + item.text
         }.joined(separator: "\n")
         return body.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private struct CardFrameKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] { [:] }
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue()) { $1 }
     }
 }
 
