@@ -100,6 +100,10 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
     var pinnedToDesktop: Bool
     var reminderAt: Date?
     var reminderRepeatDays: Int?
+    /// 挂在顶部挂绳上
+    var onLine: Bool
+    /// 在挂绳上的水平位置（0…1）；nil 表示尚未摆放
+    var linePosition: Double?
     var updatedAt: Date
     var createdAt: Date
 
@@ -117,6 +121,8 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         pinnedToDesktop: Bool = false,
         reminderAt: Date? = nil,
         reminderRepeatDays: Int? = nil,
+        onLine: Bool = false,
+        linePosition: Double? = nil,
         updatedAt: Date = Date(),
         createdAt: Date = Date()
     ) {
@@ -133,6 +139,8 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         self.pinnedToDesktop = pinnedToDesktop
         self.reminderAt = reminderAt
         self.reminderRepeatDays = reminderRepeatDays
+        self.onLine = onLine
+        self.linePosition = linePosition
         self.updatedAt = updatedAt
         self.createdAt = createdAt
     }
@@ -147,13 +155,47 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
         if !t.isEmpty { return t }
         let first = body.split(separator: "\n", omittingEmptySubsequences: true).first.map(String.init) ?? ""
-        let cleaned = first
+        var cleaned = first.trimmingCharacters(in: .whitespaces)
+        // 只剥行首的列表/待办标记，正文里的 "- " 保留
+        if let item = Checklist.parse(cleaned) {
+            cleaned = item.text
+        } else if cleaned.hasPrefix("- ") || cleaned.hasPrefix("• ") {
+            cleaned = String(cleaned.dropFirst(2))
+        }
+        if Note.imageRegex.firstMatch(in: cleaned, range: NSRange(location: 0, length: (cleaned as NSString).length)) != nil {
+            cleaned = "图片"
+        }
+        cleaned = cleaned
             .replacingOccurrences(of: "**", with: "")
-            .replacingOccurrences(of: "- [ ] ", with: "")
-            .replacingOccurrences(of: "- [x] ", with: "")
-            .replacingOccurrences(of: "- ", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return cleaned.isEmpty ? "未命名便签" : String(cleaned.prefix(28))
+    }
+
+    static let imageRegex = try! NSRegularExpression(pattern: #"!\[([^\]]*)\]\((attachments\/[^)\s]+)\)"#)
+
+    /// 正文里引用的所有附件路径（attachments/…）
+    var attachmentPaths: [String] {
+        let ns = body as NSString
+        return Note.imageRegex.matches(in: body, range: NSRange(location: 0, length: ns.length)).map {
+            ns.substring(with: $0.range(at: 2))
+        }
+    }
+
+    /// 正文只有一张图（挂绳上以照片样式展示）
+    var isImageOnly: Bool {
+        guard title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines) as NSString
+        guard let m = Note.imageRegex.firstMatch(in: trimmed as String, range: NSRange(location: 0, length: trimmed.length)) else { return false }
+        return m.range.length == trimmed.length
+    }
+
+    /// 正文只有一个网址（挂绳上以链接卡片展示，点击直接打开网页）
+    var webLink: URL? {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+              let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https", url.host != nil else { return nil }
+        return url
     }
 
     var searchBlob: String {
@@ -163,6 +205,7 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, body, color, tags, isArchived, isCollapsed, isLocked
         case opacity, windowFrame, pinnedToDesktop, reminderAt, reminderRepeatDays
+        case onLine, linePosition
         case updatedAt, createdAt
     }
 
@@ -182,6 +225,8 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         pinnedToDesktop = try c.decodeIfPresent(Bool.self, forKey: .pinnedToDesktop) ?? false
         reminderAt = try c.decodeIfPresent(Date.self, forKey: .reminderAt)
         reminderRepeatDays = try c.decodeIfPresent(Int.self, forKey: .reminderRepeatDays)
+        onLine = try c.decodeIfPresent(Bool.self, forKey: .onLine) ?? false
+        linePosition = try c.decodeIfPresent(Double.self, forKey: .linePosition)
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
@@ -201,6 +246,8 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         try c.encode(pinnedToDesktop, forKey: .pinnedToDesktop)
         try c.encodeIfPresent(reminderAt, forKey: .reminderAt)
         try c.encodeIfPresent(reminderRepeatDays, forKey: .reminderRepeatDays)
+        try c.encode(onLine, forKey: .onLine)
+        try c.encodeIfPresent(linePosition, forKey: .linePosition)
         try c.encode(updatedAt, forKey: .updatedAt)
         try c.encode(createdAt, forKey: .createdAt)
     }
@@ -234,9 +281,33 @@ struct NotesDatabase: Codable {
     var versions: [NoteVersion]
     var schemaVersion: Int
 
-    static let currentSchema = 3
+    static let currentSchema = 4
 
     static var empty: NotesDatabase {
         NotesDatabase(notes: [], trash: [], versions: [], schemaVersion: currentSchema)
+    }
+}
+
+/// 待办行解析：只认行首（可缩进）的 `- [ ]` / `- [x]` / `- [X]`。
+enum Checklist {
+    struct Item {
+        var indent: String
+        var done: Bool
+        var text: String
+    }
+
+    private static let regex = try! NSRegularExpression(pattern: #"^(\s*)[-*] \[( |x|X)\](?: (.*))?$"#)
+
+    static func parse(_ line: String) -> Item? {
+        let ns = line as NSString
+        guard let m = regex.firstMatch(in: line, range: NSRange(location: 0, length: ns.length)) else { return nil }
+        let indent = ns.substring(with: m.range(at: 1))
+        let done = ns.substring(with: m.range(at: 2)) != " "
+        let text = m.range(at: 3).location == NSNotFound ? "" : ns.substring(with: m.range(at: 3))
+        return Item(indent: indent, done: done, text: text)
+    }
+
+    static func line(_ item: Item) -> String {
+        item.indent + (item.done ? "- [x] " : "- [ ] ") + item.text
     }
 }

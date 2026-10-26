@@ -2,21 +2,27 @@ import Foundation
 import AppKit
 import SwiftUI
 import UserNotifications
+import Combine
 
 @MainActor
 final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = ReminderManager()
     private weak var store: NoteStore?
     private var timer: Timer?
+    private var cancellables: Set<AnyCancellable> = []
+    /// 已交给系统排期的提醒：noteID → 指纹（时间 + 文案），变了才重排
+    private var scheduled: [UUID: String] = [:]
 
     static let categoryID = "EDGENOTES_REMINDER"
     static let snooze5 = "SNOOZE_5"
     static let snooze15 = "SNOOZE_15"
     static let snooze60 = "SNOOZE_60"
     static let openNote = "OPEN_NOTE"
+    private static let requestPrefix = "reminder-"
 
     private override init() { super.init() }
 
+    /// 需在 applicationWillFinishLaunching 里调用，才能接住「点通知启动 App」的回调。
     func start(store: NoteStore) {
         self.store = store
         let center = UNUserNotificationCenter.current()
@@ -35,9 +41,27 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         )
         center.setNotificationCategories([category])
 
+        // 通知交给系统按时间投递（App 退出也会响）；这里只负责同步排期
+        store.$notes
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.syncSchedule() }
+            .store(in: &cancellables)
+        AppSettings.shared.$privacyHideBodies
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.scheduled.removeAll()
+                self?.syncSchedule()
+            }
+            .store(in: &cancellables)
+
+        // 启动时：错过的提醒只推进/清除，不重复弹
+        advanceDueReminders(launching: true)
+        syncSchedule()
+
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.tick() }
+            Task { @MainActor in self?.advanceDueReminders(launching: false) }
         }
     }
 
@@ -48,24 +72,74 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         store.setReminder(id: noteID, at: at, repeatDays: days)
     }
 
-    private func tick() {
+    /// 重复提醒的下一次：从原定时间按周期往后推，保持原来的钟点
+    static func nextOccurrence(after at: Date, everyDays days: Int, now: Date = Date()) -> Date {
+        var next = at
+        let cal = Calendar.current
+        repeat {
+            next = cal.date(byAdding: .day, value: days, to: next) ?? next.addingTimeInterval(Double(days) * 86400)
+        } while next <= now
+        return next
+    }
+
+    /// 到点的提醒：系统已经投递了通知，这里把便签带到前台并推进下一次
+    private func advanceDueReminders(launching: Bool) {
         guard let store else { return }
         let now = Date()
         for note in store.notes {
             guard let at = note.reminderAt, at <= now else { continue }
-            fire(note: note)
+            // 刚到点（App 正在运行）才把便签弹到前面；很久以前错过的只推进
+            if !launching && now.timeIntervalSince(at) < 120 {
+                bringToFront(noteID: note.id)
+            }
             if let days = note.reminderRepeatDays, days > 0 {
-                let next = Calendar.current.date(byAdding: .day, value: days, to: max(at, now)) ?? now.addingTimeInterval(Double(days) * 86400)
-                store.setReminder(id: note.id, at: next, repeatDays: days)
+                store.setReminder(id: note.id, at: Self.nextOccurrence(after: at, everyDays: days, now: now), repeatDays: days)
             } else {
                 store.setReminder(id: note.id, at: nil, repeatDays: nil)
             }
         }
     }
 
-    private func fire(note: Note) {
-        notify(note: note)
-        bringToFront(noteID: note.id)
+    private func syncSchedule() {
+        guard let store else { return }
+        let center = UNUserNotificationCenter.current()
+        let now = Date()
+        var wanted: [UUID: (Note, String)] = [:]
+        let privacy = AppSettings.shared.privacyHideBodies
+        for note in store.notes {
+            guard let at = note.reminderAt, at > now else { continue }
+            let fingerprint = "\(at.timeIntervalSince1970)|\(note.displayTitle)|\(note.isLocked)|\(privacy)"
+            wanted[note.id] = (note, fingerprint)
+        }
+        let stale = scheduled.keys.filter { wanted[$0] == nil }
+        if !stale.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: stale.map { Self.requestPrefix + $0.uuidString })
+            stale.forEach { scheduled.removeValue(forKey: $0) }
+        }
+        for (id, (note, fingerprint)) in wanted where scheduled[id] != fingerprint {
+            scheduled[id] = fingerprint
+            schedule(note: note, at: note.reminderAt!)
+        }
+    }
+
+    private func schedule(note: Note, at: Date) {
+        let content = UNMutableNotificationContent()
+        content.title = "便签提醒"
+        content.categoryIdentifier = Self.categoryID
+        content.threadIdentifier = note.id.uuidString
+        // 隐私：锁定或全局速藏时不暴露正文
+        if note.isLocked || AppSettings.shared.privacyHideBodies {
+            content.body = "有一条私密便签到期"
+        } else {
+            content.body = note.displayTitle
+        }
+        content.sound = .default
+        content.userInfo = ["noteID": note.id.uuidString]
+        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: at)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        // 同一 identifier 会替换旧的排期
+        let req = UNNotificationRequest(identifier: Self.requestPrefix + note.id.uuidString, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(req)
     }
 
     private func bringToFront(noteID: UUID) {
@@ -77,25 +151,7 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func notify(note: Note) {
-        let content = UNMutableNotificationContent()
-        content.title = "便签提醒"
-        content.categoryIdentifier = Self.categoryID
-        content.threadIdentifier = note.id.uuidString
-        // 隐私：锁定或全局速藏时不暴露正文
-        if note.isLocked || AppSettings.shared.privacyHideBodies {
-            content.body = "有一条私密便签到期"
-            content.subtitle = ""
-        } else {
-            content.body = note.displayTitle
-        }
-        content.sound = .default
-        content.userInfo = ["noteID": note.id.uuidString]
-        let req = UNNotificationRequest(identifier: note.id.uuidString + "-\(Int(Date().timeIntervalSince1970))", content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(req)
-    }
-
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
@@ -103,27 +159,35 @@ final class ReminderManager: NSObject, UNUserNotificationCenterDelegate {
         completionHandler([.banner, .sound])
     }
 
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let info = response.notification.request.content.userInfo
-        let idString = (info["noteID"] as? String) ?? response.notification.request.identifier.components(separatedBy: "-").first
+        var idString = info["noteID"] as? String
+        if idString == nil {
+            // 兜底：identifier 形如 reminder-<UUID>；UUID 自身带「-」，不能按「-」切
+            let raw = response.notification.request.identifier
+            idString = String(raw.hasPrefix(Self.requestPrefix) ? raw.dropFirst(Self.requestPrefix.count).prefix(36) : raw.prefix(36))
+        }
+        let action = response.actionIdentifier
         guard let idString, let id = UUID(uuidString: idString) else {
             completionHandler()
             return
         }
-        switch response.actionIdentifier {
-        case Self.snooze5: snooze(noteID: id, minutes: 5)
-        case Self.snooze15: snooze(noteID: id, minutes: 15)
-        case Self.snooze60: snooze(noteID: id, minutes: 60)
-        case Self.openNote, UNNotificationDefaultActionIdentifier:
-            bringToFront(noteID: id)
-        default:
-            break
+        Task { @MainActor in
+            switch action {
+            case Self.snooze5: self.snooze(noteID: id, minutes: 5)
+            case Self.snooze15: self.snooze(noteID: id, minutes: 15)
+            case Self.snooze60: self.snooze(noteID: id, minutes: 60)
+            case Self.openNote, UNNotificationDefaultActionIdentifier:
+                self.bringToFront(noteID: id)
+            default:
+                break
+            }
+            completionHandler()
         }
-        completionHandler()
     }
 }
 

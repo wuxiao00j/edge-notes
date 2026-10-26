@@ -30,7 +30,7 @@ struct StickyHeaderBar: View {
                         Circle().fill(Color.red.opacity(0.85)).frame(width: 10, height: 10)
                     }
                     .buttonStyle(.plain)
-                    .help("关闭窗口")
+                    .help("关闭（不退出）")
                     .accessibilityLabel("关闭窗口")
                     .padding(.trailing, 4)
                 }

@@ -16,6 +16,9 @@ final class AppSettings: ObservableObject {
     @Published var hotkeyCapture: HotKeyChord
     @Published var hotkeyPaste: HotKeyChord
     @Published var sidebarHidden: Bool
+    @Published var clotheslineEnabled: Bool
+    /// 鼠标移到屏幕右边缘呼出侧栏。默认关：只留挂绳，侧栏从菜单栏图标或快捷键打开
+    @Published var edgeDockEnabled: Bool
 
     private let defaults = UserDefaults.standard
 
@@ -29,6 +32,8 @@ final class AppSettings: ObservableObject {
         static let hotkeyCapture = "EdgeNotes.hotkeyCapture"
         static let hotkeyPaste = "EdgeNotes.hotkeyPaste"
         static let sidebarHidden = "EdgeNotes.sidebarHidden"
+        static let clotheslineEnabled = "EdgeNotes.clotheslineEnabled"
+        static let edgeDockEnabled = "EdgeNotes.edgeDockEnabled"
     }
 
     private init() {
@@ -52,6 +57,8 @@ final class AppSettings: ObservableObject {
         hotkeyCapture = Self.loadChord(d, Keys.hotkeyCapture) ?? .optionCommandT
         hotkeyPaste = Self.loadChord(d, Keys.hotkeyPaste) ?? .optionCommandShiftV
         sidebarHidden = d.bool(forKey: Keys.sidebarHidden)
+        clotheslineEnabled = d.object(forKey: Keys.clotheslineEnabled) == nil ? true : d.bool(forKey: Keys.clotheslineEnabled)
+        edgeDockEnabled = d.bool(forKey: Keys.edgeDockEnabled)
     }
 
     private static func loadChord(_ d: UserDefaults, _ key: String) -> HotKeyChord? {
@@ -111,6 +118,16 @@ final class AppSettings: ObservableObject {
         defaults.set(hidden, forKey: Keys.sidebarHidden)
     }
 
+    func setClotheslineEnabled(_ on: Bool) {
+        clotheslineEnabled = on
+        defaults.set(on, forKey: Keys.clotheslineEnabled)
+    }
+
+    func setEdgeDockEnabled(_ on: Bool) {
+        edgeDockEnabled = on
+        defaults.set(on, forKey: Keys.edgeDockEnabled)
+    }
+
     private func applyLaunchAtLogin() {
         if #available(macOS 13.0, *) {
             do {
@@ -153,5 +170,36 @@ struct HotKeyChord: Codable, Equatable {
 
     static var optionCommandShiftV: HotKeyChord {
         HotKeyChord(keyCode: UInt32(kVK_ANSI_V), modifiers: UInt32(cmdKey | optionKey | shiftKey), label: "⌥⇧⌘V")
+    }
+}
+
+import LocalAuthentication
+import AppKit
+
+/// 锁定便签：解锁需要 Touch ID 或登录密码（系统对话框，App 不接触密码）。
+@MainActor
+enum NoteLock {
+    static func unlock(_ id: UUID, store: NoteStore, completion: ((Bool) -> Void)? = nil) {
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            // 没有可用的验证方式时退回确认对话框
+            let alert = NSAlert()
+            alert.messageText = "解锁这条便签？"
+            alert.informativeText = "解锁后正文可以编辑。"
+            alert.addButton(withTitle: "解锁")
+            alert.addButton(withTitle: "取消")
+            NSApp.activate(ignoringOtherApps: true)
+            let ok = alert.runModal() == .alertFirstButtonReturn
+            if ok { store.setLocked(id: id, false) }
+            completion?(ok)
+            return
+        }
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "解锁便签") { success, _ in
+            Task { @MainActor in
+                if success { store.setLocked(id: id, false) }
+                completion?(success)
+            }
+        }
     }
 }

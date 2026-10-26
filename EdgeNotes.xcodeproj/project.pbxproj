@@ -16,6 +16,7 @@
 		38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D501332BF4D2276C8649DD5F /* ContentView.swift */; };
 		414AF6EFFBAFB416C9A203FA /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */; };
 		4A6E5AFC6D015CB2D8AC0660 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 4AE65A150BECB382C555FE36 /* Localizable.strings */; };
+		4AA8AFCF95EE1784DB4B1A4F /* Clothesline.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0D89A25A23DE636483AACC /* Clothesline.swift */; };
 		652618A668A584FE7C732CDB /* SelectionCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC749B2CA40E5A797E0D9C3 /* SelectionCapture.swift */; };
 		6540821F4746B6357EDECD0A /* GlassChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */; };
 		8761FBE50F05FAFD1607371E /* HotKeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */; };
@@ -45,6 +46,7 @@
 		AE14BF418185187B817F44F4 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		BF06525E7B1DAED548037070 /* MarkdownTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextView.swift; sourceTree = "<group>"; };
 		C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyRecorder.swift; sourceTree = "<group>"; };
+		CF0D89A25A23DE636483AACC /* Clothesline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clothesline.swift; sourceTree = "<group>"; };
 		D00621EAA3C328DF25DBB879 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		D501332BF4D2276C8649DD5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		D57F02F0CFDA021BD868DA88 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -76,6 +78,7 @@
 				F69A5704D1CEF62087CD9F33 /* AppSettings.swift */,
 				83D8F7F98083ADB2970A21DF /* Assets.xcassets */,
 				7460BAFECA654532B30EBE51 /* ChecklistView.swift */,
+				CF0D89A25A23DE636483AACC /* Clothesline.swift */,
 				D501332BF4D2276C8649DD5F /* ContentView.swift */,
 				28890B7636D0E35CED72261A /* EdgeNotesApp.swift */,
 				2EE63C8DF6864179FAD794AC /* EdgePanelController.swift */,
@@ -168,6 +171,7 @@
 			files = (
 				88E171736BF715A924708995 /* AppSettings.swift in Sources */,
 				D6995481C52837A4D4A491CC /* ChecklistView.swift in Sources */,
+				4AA8AFCF95EE1784DB4B1A4F /* Clothesline.swift in Sources */,
 				38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */,
 				FDE753E86D4E5A3733E282D7 /* EdgeNotesApp.swift in Sources */,
 				E9C55BB49942BEAF81EF5637 /* EdgePanelController.swift in Sources */,
@@ -246,7 +250,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -265,7 +269,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.barry.EdgeNotes;
@@ -314,7 +318,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -339,7 +343,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.4.0;
+				MARKETING_VERSION = 0.5.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

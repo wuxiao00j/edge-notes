@@ -91,6 +91,24 @@ enum AttachmentStore {
         }
     }
 
+    /// 删除没有任何便签 / 回收站 / 历史版本引用的附件。
+    /// 只清理 1 小时前的文件，避免刚拖进编辑器、尚未保存的图片被误删。
+    static func collectGarbage(referencedBy referenced: Set<String>) {
+        let dir = directory
+        DispatchQueue.global(qos: .utility).async {
+            let fm = FileManager.default
+            let cutoff = Date().addingTimeInterval(-3600)
+            let files = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles])) ?? []
+            var removed = 0
+            for url in files where !referenced.contains(url.lastPathComponent) {
+                let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantFuture
+                guard modified < cutoff else { continue }
+                if (try? fm.removeItem(at: url)) != nil { removed += 1 }
+            }
+            if removed > 0 { NSLog("EdgeNotes: 清理了 \(removed) 个未引用附件") }
+        }
+    }
+
     static func absoluteURL(forMarkdownPath path: String) -> URL? {
         // attachments/xxx
         let trimmed = path.trimmingCharacters(in: .whitespaces)
@@ -111,7 +129,7 @@ enum LinkTitleFetcher {
     static func fetch(_ url: URL, completion: @escaping @MainActor (String) -> Void) {
         var req = URLRequest(url: url, timeoutInterval: 8)
         req.setValue(
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgeNotes/0.4",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgeNotes/0.5",
             forHTTPHeaderField: "User-Agent"
         )
         URLSession.shared.dataTask(with: req) { data, _, _ in
