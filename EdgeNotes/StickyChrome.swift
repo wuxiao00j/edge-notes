@@ -196,10 +196,15 @@ struct NoteEditorPane: View {
     }
 
     private var formattingBar: some View {
-        HStack(spacing: 8) {
-            Button(L("粗体")) { bridge.bold(); onChange() }.buttonStyle(.borderless)
-            Button(L("列表")) { bridge.list(); onChange() }.buttonStyle(.borderless)
-            Button(L("待办")) { bridge.todo(); onChange() }.buttonStyle(.borderless)
+        HStack(spacing: 4) {
+            formatButton("bold", L("粗体（⌘B）")) { bridge.bold() }
+            formatButton("list.bullet", L("项目符号列表（行首输入「- 」）")) { bridge.list() }
+            formatButton("list.number", L("编号列表（行首输入「1. 」）")) { bridge.numbered() }
+            formatButton("checklist", L("待办（行首输入「[] 」）")) { bridge.todo() }
+            Text(L("Tab 缩进"))
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .padding(.leading, 4)
             Spacer()
             Text(L("可拖入图片"))
                 .font(.system(size: 10))
@@ -207,6 +212,21 @@ struct NoteEditorPane: View {
         }
         .font(.system(size: 11, weight: .medium))
         .foregroundStyle(color.accent)
+    }
+
+    private func formatButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            onChange()
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .frame(width: 26, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
 

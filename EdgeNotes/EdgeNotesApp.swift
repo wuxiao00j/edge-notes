@@ -9,131 +9,166 @@ struct EdgeNotesApp: App {
 
     var body: some Scene {
         Settings {
-            Form {
-                Section(L("挂绳")) {
-                    Toggle(L("挂绳模式（屏幕顶部的晾衣绳）"), isOn: Binding(
-                        get: { settings.clotheslineEnabled },
-                        set: { settings.setClotheslineEnabled($0) }
-                    ))
-                    Picker(L("卡片大小"), selection: Binding(
-                        get: { settings.lineCardSize },
-                        set: { settings.setLineCardSize($0) }
-                    )) {
-                        ForEach(LineCardSize.allCases) { size in
-                            Text(size.label).tag(size)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    Picker(L("挂满后自动取下"), selection: Binding(
-                        get: { settings.lineAutoRemoveDays },
-                        set: { settings.setLineAutoRemoveDays($0) }
-                    )) {
-                        Text(L("不自动取下")).tag(0)
-                        Text(L("1 天")).tag(1)
-                        Text(L("3 天")).tag(3)
-                        Text(L("7 天")).tag(7)
-                        Text(L("30 天")).tag(30)
-                    }
-                    Toggle(L("钉住挂绳（一直放下，不自动收起）"), isOn: Binding(
-                        get: { settings.linePinnedOpen },
-                        set: { settings.setLinePinnedOpen($0) }
-                    ))
-                    Toggle(L("在全屏 App 中也显示"), isOn: Binding(
-                        get: { settings.lineShowInFullScreen },
-                        set: { settings.setLineShowInFullScreen($0) }
-                    ))
-                    Text(L("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字、链接或文件拖到绳上即可挂起（文件只记位置，不复制）；左右拖动换位置，往下拖出来可放进其它 App；点夹子取下。单击图片看大图，单击文字便签进入编辑。"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Section(L("剪贴板历史")) {
-                    Toggle(L("记录复制过的内容，挂在绳上的大卡片里"), isOn: Binding(
-                        get: { settings.clipboardHistoryEnabled },
-                        set: { settings.setClipboardHistoryEnabled($0) }
-                    ))
-                    Text(LF("点卡片里的任意一条即可重新复制（文字、图片、文件）。保留最近 %@ 条；密码管理器等标记为隐私的内容不会记录。", ClipboardHistory.maxEntries))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Section(L("窗口")) {
-                    Toggle(L("便签窗口始终置顶"), isOn: Binding(
-                        get: { settings.isAlwaysOnTop },
-                        set: { NotesWindowController.shared.setAlwaysOnTop($0) }
-                    ))
-                    HStack {
-                        Text(L("默认透明度"))
-                        Slider(value: Binding(
-                            get: { settings.defaultOpacity },
-                            set: { settings.setDefaultOpacity($0) }
-                        ), in: 0.35...1)
-                        Text("\(Int(settings.defaultOpacity * 100))%")
-                            .frame(width: 40)
-                    }
-                    Toggle(L("登录时打开"), isOn: Binding(
-                        get: { settings.launchAtLogin },
-                        set: { settings.setLaunchAtLogin($0) }
-                    ))
-                }
-                Section(L("隐私")) {
-                    Toggle(L("速藏正文（列表、挂绳与通知不显示内容）"), isOn: Binding(
-                        get: { settings.privacyHideBodies },
-                        set: { settings.setPrivacyHideBodies($0) }
-                    ))
-                    Text(L("锁定的单条便签始终在通知里隐藏正文。"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Section(L("快捷键（点击后按下新组合）")) {
-                    HotKeyRecorderButton(
-                        title: L("显示/隐藏全部便签"),
-                        chord: Binding(
-                            get: { settings.hotkeyToggle },
-                            set: { settings.setHotkeyToggle($0) }
-                        ),
-                        onChange: { HotKeyManager.shared.reloadFromSettings() }
-                    )
-                    HotKeyRecorderButton(
-                        title: L("新建挂绳便签"),
-                        chord: Binding(
-                            get: { settings.hotkeyCapture },
-                            set: { settings.setHotkeyCapture($0) }
-                        ),
-                        onChange: { HotKeyManager.shared.reloadFromSettings() }
-                    )
-                    HotKeyRecorderButton(
-                        title: L("剪贴板 → 挂绳"),
-                        chord: Binding(
-                            get: { settings.hotkeyHang },
-                            set: { settings.setHotkeyHang($0) }
-                        ),
-                        onChange: { HotKeyManager.shared.reloadFromSettings() }
-                    )
-                }
-                Section(L("更新")) {
-                    Toggle(L("自动检查更新"), isOn: Binding(
-                        get: { appDelegate.updater?.updater.automaticallyChecksForUpdates ?? false },
-                        set: { appDelegate.updater?.updater.automaticallyChecksForUpdates = $0 }
-                    ))
-                    Button(L("检查更新…")) { appDelegate.updater?.checkForUpdates(nil) }
-                }
-                Section(L("数据")) {
-                    HStack {
-                        Text("~/Library/Application Support/EdgeNotes/")
-                            .font(.caption)
-                            .textSelection(.enabled)
-                        Spacer()
-                        Button(L("在 Finder 中打开")) {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: appDelegate.store.dataDirectoryPath))
-                        }
-                    }
-                    Text(LF("离线可用；每天自动备份到 Backups/（保留 %@ 天），回收站 %@ 天后自动清空。「全部便签」窗口的「…」菜单可导出或手动备份。无 iCloud。", NoteStore.dailyBackupsKept, NoteStore.trashRetentionDays))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            SettingsView()
+        }
+    }
+}
+
+/// 设置界面（菜单栏「设置…」打开独立窗口；⌘, 走 Settings 场景）
+struct SettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+    ScrollView {
+        Form {
+        Section(L("挂绳")) {
+            Toggle(L("挂绳模式（屏幕顶部的晾衣绳）"), isOn: Binding(
+                get: { settings.clotheslineEnabled },
+                set: { settings.setClotheslineEnabled($0) }
+            ))
+            Picker(L("卡片大小"), selection: Binding(
+                get: { settings.lineCardSize },
+                set: { settings.setLineCardSize($0) }
+            )) {
+                ForEach(LineCardSize.allCases) { size in
+                    Text(size.label).tag(size)
                 }
             }
-            .padding(20)
-            .frame(width: 500)
+            .pickerStyle(.segmented)
+            Picker(L("挂满后自动取下"), selection: Binding(
+                get: { settings.lineAutoRemoveDays },
+                set: { settings.setLineAutoRemoveDays($0) }
+            )) {
+                Text(L("不自动取下")).tag(0)
+                Text(L("1 天")).tag(1)
+                Text(L("3 天")).tag(3)
+                Text(L("7 天")).tag(7)
+                Text(L("30 天")).tag(30)
+            }
+            Toggle(L("钉住挂绳（一直放下，不自动收起）"), isOn: Binding(
+                get: { settings.linePinnedOpen },
+                set: { settings.setLinePinnedOpen($0) }
+            ))
+            Toggle(L("在全屏 App 中也显示"), isOn: Binding(
+                get: { settings.lineShowInFullScreen },
+                set: { settings.setLineShowInFullScreen($0) }
+            ))
+            Text(L("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字、链接或文件拖到绳上即可挂起（文件只记位置，不复制）；左右拖动换位置，往下拖出来可放进其它 App；点夹子取下。单击图片看大图，单击文字便签进入编辑。"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
+        Section(L("剪贴板历史")) {
+            Toggle(L("记录复制过的内容，挂在绳上的大卡片里"), isOn: Binding(
+                get: { settings.clipboardHistoryEnabled },
+                set: { settings.setClipboardHistoryEnabled($0) }
+            ))
+            Text(LF("点卡片里的任意一条即可重新复制（文字、图片、文件）。保留最近 %@ 条；密码管理器等标记为隐私的内容不会记录。", ClipboardHistory.maxEntries))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Section(L("窗口")) {
+            Toggle(L("便签窗口始终置顶"), isOn: Binding(
+                get: { settings.isAlwaysOnTop },
+                set: { NotesWindowController.shared.setAlwaysOnTop($0) }
+            ))
+            HStack {
+                Text(L("默认透明度"))
+                Slider(value: Binding(
+                    get: { settings.defaultOpacity },
+                    set: { settings.setDefaultOpacity($0) }
+                ), in: 0.35...1)
+                Text("\(Int(settings.defaultOpacity * 100))%")
+                    .frame(width: 40)
+            }
+            Toggle(L("登录时打开"), isOn: Binding(
+                get: { settings.launchAtLogin },
+                set: { settings.setLaunchAtLogin($0) }
+            ))
+        }
+        Section(L("隐私")) {
+            Toggle(L("速藏正文（列表、挂绳与通知不显示内容）"), isOn: Binding(
+                get: { settings.privacyHideBodies },
+                set: { settings.setPrivacyHideBodies($0) }
+            ))
+            Text(L("锁定的单条便签始终在通知里隐藏正文。"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Section(L("快捷键（点击后按下新组合）")) {
+            HotKeyRecorderButton(
+                title: L("显示/隐藏全部便签"),
+                chord: Binding(
+                    get: { settings.hotkeyToggle },
+                    set: { settings.setHotkeyToggle($0) }
+                ),
+                onChange: { HotKeyManager.shared.reloadFromSettings() }
+            )
+            HotKeyRecorderButton(
+                title: L("新建挂绳便签"),
+                chord: Binding(
+                    get: { settings.hotkeyCapture },
+                    set: { settings.setHotkeyCapture($0) }
+                ),
+                onChange: { HotKeyManager.shared.reloadFromSettings() }
+            )
+            HotKeyRecorderButton(
+                title: L("剪贴板 → 挂绳"),
+                chord: Binding(
+                    get: { settings.hotkeyHang },
+                    set: { settings.setHotkeyHang($0) }
+                ),
+                onChange: { HotKeyManager.shared.reloadFromSettings() }
+            )
+        }
+        Section(L("更新")) {
+            Toggle(L("自动检查更新"), isOn: Binding(
+                get: { AppDelegate.current?.updater?.updater.automaticallyChecksForUpdates ?? false },
+                set: { AppDelegate.current?.updater?.updater.automaticallyChecksForUpdates = $0 }
+            ))
+            Button(L("检查更新…")) { AppDelegate.current?.updater?.checkForUpdates(nil) }
+        }
+        Section(L("数据")) {
+            HStack {
+                Text("~/Library/Application Support/EdgeNotes/")
+                    .font(.caption)
+                    .textSelection(.enabled)
+                Spacer()
+                Button(L("在 Finder 中打开")) {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: AppDelegate.current?.store.dataDirectoryPath ?? NoteStore.defaultDirectory.path))
+                }
+            }
+            Text(LF("离线可用；每天自动备份到 Backups/（保留 %@ 天），回收站 %@ 天后自动清空。「全部便签」窗口的「…」菜单可导出或手动备份。无 iCloud。", NoteStore.dailyBackupsKept, NoteStore.trashRetentionDays))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+    .padding(20)
+    .frame(width: 500)
+        }
+        .frame(minHeight: 420, idealHeight: 640)
+    }
+}
+
+/// 自己管理设置窗口：菜单栏 App 用 showSettingsWindow: 打不开 SwiftUI 的 Settings 场景
+@MainActor
+final class SettingsWindowController {
+    static let shared = SettingsWindowController()
+    private var window: NSWindow?
+
+    func show() {
+        if window == nil {
+            let host = NSHostingController(rootView: SettingsView())
+            let w = NSWindow(contentViewController: host)
+            w.title = L("设置")
+            w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            w.isReleasedWhenClosed = false
+            w.setContentSize(NSSize(width: 520, height: 640))
+            w.setFrameAutosaveName("EdgeNotes.Settings")
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 }
 
@@ -281,8 +316,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updater?.checkForUpdates(nil)
     }
     @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        SettingsWindowController.shared.show()
     }
     @objc private func quit() {
         store.flush()

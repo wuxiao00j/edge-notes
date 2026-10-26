@@ -298,3 +298,155 @@ final class ClipboardHistoryTests: XCTestCase {
         pb.releaseGlobally()
     }
 }
+
+// MARK: - 编辑器：Markdown 往返与列表编辑
+
+@MainActor
+final class EditorTests: XCTestCase {
+    private func roundTrip(_ md: String) -> String {
+        NoteBodyRendering.markdown(from: NoteBodyRendering.attributed(from: md))
+    }
+
+    /// 打开便签不能改动内容，否则会被当成修改（列表跳到最上面）
+    func testMarkdownRoundTripIsStable() {
+        let samples = [
+            "普通一行",
+            "- 项目\n- 第二项",
+            "1. 一\n2. 二\n3. 三",
+            "- [ ] 待办\n- [x] 完成",
+            "- 外层\n  - 内层\n    - 更深",
+            "**粗体** 和 [链接](https://example.com)",
+            "标题\n\n- a\n\n正文",
+            "末尾换行\n",
+            "",
+        ]
+        for md in samples { XCTAssertEqual(roundTrip(md), md, "往返不稳定：\(md)") }
+    }
+
+    private func makeEditor(_ md: String) -> TypingTextView {
+        let tv = TypingTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        tv.isEditable = true
+        tv.isRichText = true
+        tv.allowsUndo = true
+        tv.textStorage?.setAttributedString(NoteBodyRendering.attributed(from: md))
+        return tv
+    }
+
+    private func md(_ tv: NSTextView) -> String { NoteBodyRendering.markdown(from: tv.attributedString()) }
+
+    private func caretAtEnd(_ tv: NSTextView) { tv.setSelectedRange(NSRange(location: (tv.string as NSString).length, length: 0)) }
+
+    func testToggleBulletOnCurrentLineWithoutPlaceholder() {
+        let tv = makeEditor("买菜")
+        caretAtEnd(tv)
+        tv.toggleList(.bullet)
+        XCTAssertEqual(md(tv), "- 买菜")
+        tv.toggleList(.bullet)
+        XCTAssertEqual(md(tv), "买菜", "再点一次取消")
+    }
+
+    func testToggleTodoAndNumberOnSelectedLines() {
+        let tv = makeEditor("a\nb\nc")
+        tv.setSelectedRange(NSRange(location: 0, length: (tv.string as NSString).length))
+        tv.toggleList(.todo(false))
+        XCTAssertEqual(md(tv), "- [ ] a\n- [ ] b\n- [ ] c")
+        tv.setSelectedRange(NSRange(location: 0, length: (tv.string as NSString).length))
+        tv.toggleList(.number(1))
+        XCTAssertEqual(md(tv), "1. a\n2. b\n3. c")
+    }
+
+    func testEnterContinuesListAndExitsOnEmptyItem() {
+        let tv = makeEditor("1. 一")
+        caretAtEnd(tv)
+        tv.insertNewline(nil)
+        tv.insertText("二", replacementRange: tv.selectedRange())
+        XCTAssertEqual(md(tv), "1. 一\n2. 二")
+        tv.insertNewline(nil)
+        tv.insertNewline(nil)
+        XCTAssertEqual(md(tv), "1. 一\n2. 二\n", "空项回车结束列表")
+    }
+
+    func testEnterOnTodoMakesUncheckedTodo() {
+        let tv = makeEditor("- [x] 完成")
+        caretAtEnd(tv)
+        tv.insertNewline(nil)
+        tv.insertText("新的", replacementRange: tv.selectedRange())
+        XCTAssertEqual(md(tv), "- [x] 完成\n- [ ] 新的")
+    }
+
+    func testBackspaceAfterMarkerRemovesMarker() {
+        let tv = makeEditor("- 项目")
+        let start = NoteBodyRendering.paragraphInfo(in: tv.textStorage!, paragraph: NSRange(location: 0, length: (tv.string as NSString).length)).content.location
+        tv.setSelectedRange(NSRange(location: start, length: 0))
+        tv.deleteBackward(nil)
+        XCTAssertEqual(md(tv), "项目")
+    }
+
+    func testTabIndentsAndShiftTabOutdents() {
+        let tv = makeEditor("- a\n- b")
+        caretAtEnd(tv)
+        tv.insertTab(nil)
+        XCTAssertEqual(md(tv), "- a\n  - b")
+        tv.insertBacktab(nil)
+        XCTAssertEqual(md(tv), "- a\n- b")
+    }
+
+    func testTypingShortcutsCreateLists() {
+        let tv = makeEditor("")
+        for ch in ["-", " "] { tv.insertText(ch, replacementRange: tv.selectedRange()) }
+        tv.insertText("x", replacementRange: tv.selectedRange())
+        XCTAssertEqual(md(tv), "- x")
+
+        let todo = makeEditor("")
+        for ch in ["[", "]", " "] { todo.insertText(ch, replacementRange: todo.selectedRange()) }
+        todo.insertText("y", replacementRange: todo.selectedRange())
+        XCTAssertEqual(md(todo), "- [ ] y")
+
+        let num = makeEditor("")
+        for ch in ["1", ".", " "] { num.insertText(ch, replacementRange: num.selectedRange()) }
+        num.insertText("z", replacementRange: num.selectedRange())
+        XCTAssertEqual(md(num), "1. z")
+    }
+
+    func testBoldTogglesOnSelection() {
+        let tv = makeEditor("hello world")
+        tv.setSelectedRange(NSRange(location: 0, length: 5))
+        tv.toggleBold()
+        XCTAssertEqual(md(tv), "**hello** world")
+        tv.setSelectedRange(NSRange(location: 0, length: 5))
+        tv.toggleBold()
+        XCTAssertEqual(md(tv), "hello world", "再按一次取消粗体")
+    }
+}
+
+@MainActor
+final class SelectionOrderTests: TempDirTestCase {
+    /// 点选便签（编辑器回填相同内容）不能改修改时间、不能重排
+    func testNoOpUpdateDoesNotBumpModifiedTime() {
+        let store = NoteStore(directory: dir)
+        let note = store.addNote(title: "t", body: "b")
+        let before = store.note(id: note.id)!.updatedAt
+        store.update(id: note.id) { $0.title = "t"; $0.body = "b" }
+        XCTAssertEqual(store.note(id: note.id)!.updatedAt, before)
+    }
+
+    func testPerCardSize() {
+        let store = NoteStore(directory: dir)
+        let note = store.addLineNote(body: "x")
+        store.setLineCardSize(id: note.id, .large)
+        XCTAssertEqual(store.note(id: note.id)?.lineCardSize, "large")
+        store.setLineCardSize(id: note.id, nil)
+        XCTAssertNil(store.note(id: note.id)?.lineCardSize)
+    }
+}
+
+final class TiltTests: XCTestCase {
+    @MainActor
+    func testTiltIsVariedAndBounded() {
+        let tilts = (0..<200).map { _ in ClotheslineView.tilt(for: UUID()) }
+        XCTAssertTrue(tilts.allSatisfy { abs($0) >= 1.5 && abs($0) <= 7 })
+        XCTAssertGreaterThan(tilts.filter { $0 > 0 }.count, 50)
+        XCTAssertGreaterThan(tilts.filter { $0 < 0 }.count, 50)
+        XCTAssertGreaterThan(Set(tilts.map { Int($0.rounded()) }).count, 8, "角度要分散")
+    }
+}

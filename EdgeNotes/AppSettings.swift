@@ -25,6 +25,7 @@ final class AppSettings: ObservableObject {
     @Published var lineCardSize: LineCardSize
     /// 记录复制过的内容，挂在绳上的剪贴板卡片里
     @Published var clipboardHistoryEnabled: Bool
+    @Published var clipboardCardSize: LineCardSize
 
     private let defaults = UserDefaults.standard
 
@@ -43,6 +44,7 @@ final class AppSettings: ObservableObject {
         static let hotkeyHang = "EdgeNotes.hotkeyHang"
         static let lineCardSize = "EdgeNotes.lineCardSize"
         static let clipboardHistoryEnabled = "EdgeNotes.clipboardHistoryEnabled"
+        static let clipboardCardSize = "EdgeNotes.clipboardCardSize"
     }
 
     private init() {
@@ -67,6 +69,7 @@ final class AppSettings: ObservableObject {
         hotkeyHang = Self.loadChord(d, Keys.hotkeyHang) ?? .optionCommandShiftH
         lineCardSize = d.string(forKey: Keys.lineCardSize).flatMap(LineCardSize.init(rawValue:)) ?? .small
         clipboardHistoryEnabled = d.object(forKey: Keys.clipboardHistoryEnabled) == nil ? true : d.bool(forKey: Keys.clipboardHistoryEnabled)
+        clipboardCardSize = d.string(forKey: Keys.clipboardCardSize).flatMap(LineCardSize.init(rawValue:)) ?? .small
     }
 
     private static func loadChord(_ d: UserDefaults, _ key: String) -> HotKeyChord? {
@@ -141,6 +144,11 @@ final class AppSettings: ObservableObject {
         defaults.set(size.rawValue, forKey: Keys.lineCardSize)
     }
 
+    func setClipboardCardSize(_ size: LineCardSize) {
+        clipboardCardSize = size
+        defaults.set(size.rawValue, forKey: Keys.clipboardCardSize)
+    }
+
     func setClipboardHistoryEnabled(_ on: Bool) {
         clipboardHistoryEnabled = on
         defaults.set(on, forKey: Keys.clipboardHistoryEnabled)
@@ -170,11 +178,21 @@ final class AppSettings: ObservableObject {
 enum LineCardSize: String, CaseIterable, Identifiable {
     case small, medium, large
     var id: String { rawValue }
-    var scale: CGFloat {
+    /// 各尺寸卡片的版面：大卡不是放大，而是更宽更高、能显示更多内容
+    var metrics: CardMetrics {
         switch self {
-        case .small: return 1
-        case .medium: return 1.3
-        case .large: return 1.6
+        case .small:  return CardMetrics(width: 128, minHeight: 96, maxHeight: 150, titleLines: 2, bodyLines: 5, photoWidth: 124, photoMaxHeight: 160, iconSize: 64)
+        case .medium: return CardMetrics(width: 184, minHeight: 130, maxHeight: 250, titleLines: 3, bodyLines: 11, photoWidth: 180, photoMaxHeight: 240, iconSize: 88)
+        case .large:  return CardMetrics(width: 250, minHeight: 170, maxHeight: 360, titleLines: 3, bodyLines: 18, photoWidth: 246, photoMaxHeight: 340, iconSize: 112)
+        }
+    }
+
+    /// 剪贴板大卡片的尺寸
+    var clipboardSize: CGSize {
+        switch self {
+        case .small: return CGSize(width: 236, height: 206)
+        case .medium: return CGSize(width: 290, height: 290)
+        case .large: return CGSize(width: 350, height: 380)
         }
     }
     var label: String {
@@ -184,6 +202,17 @@ enum LineCardSize: String, CaseIterable, Identifiable {
         case .large: return L("大")
         }
     }
+}
+
+struct CardMetrics {
+    var width: CGFloat
+    var minHeight: CGFloat
+    var maxHeight: CGFloat
+    var titleLines: Int
+    var bodyLines: Int
+    var photoWidth: CGFloat
+    var photoMaxHeight: CGFloat
+    var iconSize: CGFloat
 }
 
 struct HotKeyChord: Codable, Equatable {

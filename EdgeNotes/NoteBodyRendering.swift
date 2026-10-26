@@ -2,8 +2,27 @@ import AppKit
 
 enum EdgeNotesAttrs {
     static let attachmentPath = NSAttributedString.Key("EdgeNotes.AttachmentPath")
-    /// "ul" for bullet list marker characters
+    /// 列表标记（行首「• \t」「1.\t」「☐\t」）上的种类："ul" / "ol" / "todo"
     static let listMarker = NSAttributedString.Key("EdgeNotes.ListMarker")
+    /// 列表缩进层级（Int，0 起）
+    static let listLevel = NSAttributedString.Key("EdgeNotes.ListLevel")
+}
+
+/// 一行的列表格式
+enum ListKind: Equatable {
+    case bullet
+    case number(Int)
+    case todo(Bool)
+
+    var markerKey: String {
+        switch self {
+        case .bullet: return "ul"
+        case .number: return "ol"
+        case .todo: return "todo"
+        }
+    }
+
+    func sameFamily(_ other: ListKind) -> Bool { markerKey == other.markerKey }
 }
 
 /// 正文存储仍为 Markdown；编辑器内渲染粗体 / 列表 / 待办勾选 / 图片。
@@ -39,6 +58,93 @@ enum NoteBodyRendering {
         NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
     }
 
+    // MARK: - 列表排版
+
+    static let indentUnit: CGFloat = 20
+    static let markerWidth: CGFloat = 22
+    static let maxListLevel = 4
+
+    /// 列表行的段落样式：标记悬挂在左边，折行后对齐正文
+    static func listParagraphStyle(level: Int) -> NSParagraphStyle {
+        let p = NSMutableParagraphStyle()
+        let first = CGFloat(level) * indentUnit
+        p.firstLineHeadIndent = first
+        p.headIndent = first + markerWidth
+        p.tabStops = [NSTextTab(textAlignment: .left, location: first + markerWidth)]
+        p.defaultTabInterval = indentUnit
+        p.paragraphSpacing = 2
+        return p
+    }
+
+    static var plainParagraphStyle: NSParagraphStyle {
+        let p = NSMutableParagraphStyle()
+        p.paragraphSpacing = 2
+        return p
+    }
+
+    /// 行首标记（含末尾的制表符），带 listMarker / listLevel 属性
+    static func marker(_ kind: ListKind, level: Int, font: NSFont = .systemFont(ofSize: 13)) -> NSAttributedString {
+        var attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.secondaryLabelColor,
+            EdgeNotesAttrs.listMarker: kind.markerKey,
+            EdgeNotesAttrs.listLevel: level,
+            .paragraphStyle: listParagraphStyle(level: level)
+        ]
+        switch kind {
+        case .bullet:
+            let glyphs = ["•", "◦", "▪︎", "•", "◦"]
+            return NSAttributedString(string: glyphs[min(level, glyphs.count - 1)] + "\t", attributes: attrs)
+        case .number(let n):
+            attrs[.font] = NSFont.monospacedDigitSystemFont(ofSize: font.pointSize, weight: .regular)
+            return NSAttributedString(string: "\(n).\t", attributes: attrs)
+        case .todo(let checked):
+            let box = NSMutableAttributedString(attachment: checkboxAttachment(checked: checked))
+            box.append(NSAttributedString(string: "\t"))
+            box.addAttributes(attrs, range: NSRange(location: 0, length: box.length))
+            return box
+        }
+    }
+
+    /// 解析一行 Markdown：缩进层级（每 2 个空格一级）、列表种类、其余正文
+    static func parseLine(_ line: String) -> (kind: ListKind?, level: Int, rest: String) {
+        var spaces = 0
+        var idx = line.startIndex
+        while idx < line.endIndex, line[idx] == " " || line[idx] == "\t" {
+            spaces += line[idx] == "\t" ? 4 : 1
+            idx = line.index(after: idx)
+        }
+        let body = String(line[idx...])
+        let level = min(maxListLevel, spaces / 2)
+        let ns = body as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        if let m = todoRegex.firstMatch(in: body, range: range) {
+            let checked = ns.substring(with: m.range(at: 1)) != " "
+            return (.todo(checked), level, ns.substring(from: m.range.upperBound))
+        }
+        if let m = bulletRegex.firstMatch(in: body, range: range) {
+            return (.bullet, level, ns.substring(from: m.range.upperBound))
+        }
+        if let m = numberRegex.firstMatch(in: body, range: range) {
+            return (.number(Int(ns.substring(with: m.range(at: 1))) ?? 1), level, ns.substring(from: m.range.upperBound))
+        }
+        return (nil, 0, line)
+    }
+
+    private static let todoRegex = try! NSRegularExpression(pattern: #"^[-*] \[( |x|X)\](?: |$)"#)
+    private static let bulletRegex = try! NSRegularExpression(pattern: #"^[-*•] "#)
+    private static let numberRegex = try! NSRegularExpression(pattern: #"^(\d{1,4})[.)] "#)
+
+    /// Markdown 中一行列表的前缀
+    static func markdownPrefix(_ kind: ListKind, level: Int) -> String {
+        let indent = String(repeating: "  ", count: level)
+        switch kind {
+        case .bullet: return indent + "- "
+        case .number(let n): return indent + "\(n). "
+        case .todo(let checked): return indent + (checked ? "- [x] " : "- [ ] ")
+        }
+    }
+
     // MARK: - Markdown → Attributed
 
     static func attributed(
@@ -48,74 +154,26 @@ enum NoteBodyRendering {
         maxImageWidth: CGFloat = 280
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        let attrs = baseAttrs(font: font, color: color)
+        var attrs = baseAttrs(font: font, color: color)
+        attrs[.paragraphStyle] = plainParagraphStyle
         let lines = markdown.components(separatedBy: "\n")
         for (idx, line) in lines.enumerated() {
-            appendLine(line, into: result, base: attrs, font: font, color: color, maxImageWidth: maxImageWidth)
-            if idx < lines.count - 1 {
-                result.append(NSAttributedString(string: "\n", attributes: attrs))
+            let start = result.length
+            let parsed = parseLine(line)
+            if let kind = parsed.kind {
+                result.append(marker(kind, level: parsed.level, font: font))
+                var checked = false
+                if case .todo(let c) = kind { checked = c }
+                appendInline(parsed.rest, into: result, base: attrs, font: font, color: color, maxImageWidth: maxImageWidth, strike: checked)
+                if idx < lines.count - 1 { result.append(NSAttributedString(string: "\n", attributes: attrs)) }
+                result.addAttribute(.paragraphStyle, value: listParagraphStyle(level: parsed.level),
+                                    range: NSRange(location: start, length: result.length - start))
+            } else {
+                appendInline(line, into: result, base: attrs, font: font, color: color, maxImageWidth: maxImageWidth, strike: false)
+                if idx < lines.count - 1 { result.append(NSAttributedString(string: "\n", attributes: attrs)) }
             }
         }
-        if markdown.hasSuffix("\n") {
-            // components drops trailing empty only when fully trailing — keep parity
-        }
-        // Restore exact trailing newlines: components(separatedBy) keeps one trailing empty
         return result
-    }
-
-    private static func appendLine(
-        _ line: String,
-        into result: NSMutableAttributedString,
-        base: [NSAttributedString.Key: Any],
-        font: NSFont,
-        color: NSColor,
-        maxImageWidth: CGFloat
-    ) {
-        if let todo = parseTodoPrefix(line) {
-            let box = checkboxAttachment(checked: todo.checked)
-            let chunk = NSMutableAttributedString(attachment: box)
-            chunk.addAttributes(base, range: NSRange(location: 0, length: chunk.length))
-            result.append(chunk)
-            result.append(NSAttributedString(string: " ", attributes: base))
-            appendInline(todo.text, into: result, base: base, font: font, color: color, maxImageWidth: maxImageWidth, strike: todo.checked)
-            return
-        }
-        if let bullet = parseBulletPrefix(line) {
-            var markerAttrs = base
-            markerAttrs[EdgeNotesAttrs.listMarker] = "ul"
-            markerAttrs[.foregroundColor] = NSColor.secondaryLabelColor
-            result.append(NSAttributedString(string: "• ", attributes: markerAttrs))
-            appendInline(bullet, into: result, base: base, font: font, color: color, maxImageWidth: maxImageWidth, strike: false)
-            return
-        }
-        appendInline(line, into: result, base: base, font: font, color: color, maxImageWidth: maxImageWidth, strike: false)
-    }
-
-    private static func parseTodoPrefix(_ line: String) -> (checked: Bool, text: String)? {
-        let patterns: [(String, Bool)] = [
-            ("- [x] ", true), ("- [X] ", true), ("- [ ] ", false),
-            ("- [x]", true), ("- [X]", true), ("- [ ]", false)
-        ]
-        for (prefix, checked) in patterns {
-            if line.hasPrefix(prefix) {
-                var text = String(line.dropFirst(prefix.count))
-                // strip a single leading space if prefix had no trailing space variant matched with content space
-                if prefix.hasSuffix("]") { text = text.trimmingCharacters(in: .whitespaces) }
-                return (checked, text)
-            }
-        }
-        return nil
-    }
-
-    private static func parseBulletPrefix(_ line: String) -> String? {
-        if line.hasPrefix("- [") { return nil } // checklist handled elsewhere
-        if line.hasPrefix("- ") {
-            return String(line.dropFirst(2))
-        }
-        if line.hasPrefix("* ") {
-            return String(line.dropFirst(2))
-        }
-        return nil
     }
 
     private static func appendInline(
@@ -281,54 +339,84 @@ enum NoteBodyRendering {
 
     // MARK: - Attributed → Markdown
 
-    static func markdown(from attributed: NSAttributedString) -> String {
-        let out = NSMutableString()
-        let full = NSRange(location: 0, length: attributed.length)
-        var i = 0
-        while i < full.length {
-            var eff = NSRange(location: i, length: 0)
-            let attrs = attributed.attributes(at: i, effectiveRange: &eff)
-            // clamp eff to not run past length
-            if NSMaxRange(eff) > full.length {
-                eff.length = full.length - eff.location
-            }
+    /// 一段（行）的列表信息：种类、层级、标记范围（含制表符）、正文范围（不含换行）
+    struct ParagraphInfo {
+        var kind: ListKind?
+        var level: Int
+        var paragraph: NSRange
+        var marker: NSRange
+        var content: NSRange
+    }
 
-            if let box = attrs[.attachment] as? EdgeNotesCheckboxAttachment {
-                out.append(box.isChecked ? "- [x] " : "- [ ] ")
-                i = eff.location + eff.length
-                // skip a single following space that we inserted as padding
-                if i < full.length {
-                    let ch = (attributed.string as NSString).substring(with: NSRange(location: i, length: 1))
-                    if ch == " " { i += 1 }
-                }
+    static func paragraphInfo(in attributed: NSAttributedString, paragraph: NSRange) -> ParagraphInfo {
+        let ns = attributed.string as NSString
+        var body = paragraph
+        if body.length > 0, ns.character(at: NSMaxRange(body) - 1) == 10 { body.length -= 1 }
+        guard body.length > 0,
+              let key = attributed.attribute(EdgeNotesAttrs.listMarker, at: body.location, effectiveRange: nil) as? String else {
+            return ParagraphInfo(kind: nil, level: 0, paragraph: paragraph,
+                                 marker: NSRange(location: body.location, length: 0), content: body)
+        }
+        var markerRange = NSRange()
+        _ = attributed.attribute(EdgeNotesAttrs.listMarker, at: body.location, longestEffectiveRange: &markerRange, in: body)
+        let level = attributed.attribute(EdgeNotesAttrs.listLevel, at: body.location, effectiveRange: nil) as? Int ?? 0
+        let kind: ListKind
+        switch key {
+        case "todo":
+            let box = attributed.attribute(.attachment, at: body.location, effectiveRange: nil) as? EdgeNotesCheckboxAttachment
+            kind = .todo(box?.isChecked ?? false)
+        case "ol":
+            let digits = ns.substring(with: markerRange).prefix { $0.isNumber }
+            kind = .number(Int(digits) ?? 1)
+        default:
+            kind = .bullet
+        }
+        let content = NSRange(location: NSMaxRange(markerRange), length: NSMaxRange(body) - NSMaxRange(markerRange))
+        return ParagraphInfo(kind: kind, level: level, paragraph: paragraph, marker: markerRange, content: content)
+    }
+
+    static func markdown(from attributed: NSAttributedString) -> String {
+        let ns = attributed.string as NSString
+        var lines: [String] = []
+        var loc = 0
+        repeat {
+            let para = ns.paragraphRange(for: NSRange(location: loc, length: 0))
+            let info = paragraphInfo(in: attributed, paragraph: para)
+            let out = NSMutableString()
+            if let kind = info.kind { out.append(markdownPrefix(kind, level: info.level)) }
+            emitInline(attributed, range: info.content, into: out)
+            lines.append(out as String)
+            loc = NSMaxRange(para)
+            // 末尾以换行结束时还有一个空行
+            if loc == ns.length, ns.length > 0, ns.character(at: ns.length - 1) == 10 { lines.append("") }
+        } while loc < ns.length
+        return lines.joined(separator: "\n")
+    }
+
+    /// 一段正文（不含列表标记）转 Markdown：图片、链接、粗体
+    private static func emitInline(_ attributed: NSAttributedString, range: NSRange, into out: NSMutableString) {
+        var i = range.location
+        let end = NSMaxRange(range)
+        while i < end {
+            var eff = NSRange()
+            let attrs = attributed.attributes(at: i, effectiveRange: &eff)
+            let sliceEnd = min(NSMaxRange(eff), end)
+            if attrs[.attachment] is EdgeNotesCheckboxAttachment {
+                i = sliceEnd
                 continue
             }
-
             if attrs[.attachment] is NSTextAttachment {
                 if let path = attrs[EdgeNotesAttrs.attachmentPath] as? String {
                     out.append("![](\(path))")
                 } else if let custom = attrs[.attachment] as? EdgeNotesImageAttachment {
                     out.append("![](\(custom.relativePath))")
-                } else {
-                    out.append("![image](attachments/unknown.png)")
                 }
-                i = eff.location + eff.length
+                i = sliceEnd
                 continue
             }
-
-            if attrs[EdgeNotesAttrs.listMarker] as? String == "ul" {
-                // Emit "- " once for the marker run ("• ")
-                out.append("- ")
-                i = eff.location + eff.length
-                continue
-            }
-
-            // Collect a text run; fold bold spans into ** **
-            let end = NSMaxRange(eff)
-            emitStyledText(attributed, range: NSRange(location: i, length: end - i), into: out)
-            i = end
+            emitStyledText(attributed, range: NSRange(location: i, length: sliceEnd - i), into: out)
+            i = sliceEnd
         }
-        return out as String
     }
 
     private static func emitStyledText(_ attributed: NSAttributedString, range: NSRange, into out: NSMutableString) {

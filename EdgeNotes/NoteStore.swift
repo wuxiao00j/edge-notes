@@ -158,8 +158,11 @@ final class NoteStore: ObservableObject {
     /// - Parameter bumpModified: 是否更新「最后修改时间」并影响列表排序。选中、钉桌面等元数据应传 false。
     func update(id: UUID, bumpModified: Bool = true, mutate: (inout Note) -> Void) {
         guard let index = notes.firstIndex(where: { $0.id == id }) else { return }
+        let before = notes[index]
         mutate(&notes[index])
         notes[index].color = notes[index].color.normalized
+        // 内容没变（比如点选便签时编辑器回填同样的文字）就什么都不做，不改修改时间、不重排
+        guard notes[index] != before else { return }
         if bumpModified {
             notes[index].updatedAt = Date()
         }
@@ -224,6 +227,11 @@ final class NoteStore: ObservableObject {
             $0.linePosition = nil
             $0.lineHungAt = nil
         }
+    }
+
+    /// 单张卡片的大小；nil = 跟随默认
+    func setLineCardSize(id: UUID, _ size: LineCardSize?) {
+        update(id: id, bumpModified: false) { $0.lineCardSize = size?.rawValue }
     }
 
     func setLinePosition(id: UUID, _ position: Double) {

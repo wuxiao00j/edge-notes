@@ -252,3 +252,11 @@
 "更新" = "Updates";
 "自动检查更新" = "Check for updates automatically";
 "检查更新…" = "Check for Updates…";
+"设置" = "Settings";
+"粗体（⌘B）" = "Bold (⌘B)";
+"项目符号列表（行首输入「- 」）" = "Bulleted list (type \"- \" at line start)";
+"编号列表（行首输入「1. 」）" = "Numbered list (type \"1. \" at line start)";
+"待办（行首输入「[] 」）" = "To-do (type \"[] \" at line start)";
+"Tab 缩进" = "Tab to indent";
+"大小" = "Size";
+"跟随默认（%@）" = "Default (%@)";

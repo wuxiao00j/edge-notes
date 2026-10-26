@@ -108,6 +108,8 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
     var lineHungAt: Date?
     /// 挂在绳上的本地文件：只记引用（书签），不复制文件
     var fileBookmark: Data?
+    /// 这张卡片自己的大小（small / medium / large）；nil = 跟随设置里的默认
+    var lineCardSize: String?
     var updatedAt: Date
     var createdAt: Date
 
@@ -221,7 +223,7 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, title, body, color, tags, isArchived, isCollapsed, isLocked
         case opacity, windowFrame, pinnedToDesktop, reminderAt, reminderRepeatDays
-        case onLine, linePosition, lineHungAt, fileBookmark
+        case onLine, linePosition, lineHungAt, fileBookmark, lineCardSize
         case updatedAt, createdAt
     }
 
@@ -245,6 +247,7 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         linePosition = try c.decodeIfPresent(Double.self, forKey: .linePosition)
         lineHungAt = try c.decodeIfPresent(Date.self, forKey: .lineHungAt)
         fileBookmark = try c.decodeIfPresent(Data.self, forKey: .fileBookmark)
+        lineCardSize = try c.decodeIfPresent(String.self, forKey: .lineCardSize)
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
@@ -268,6 +271,7 @@ struct Note: Identifiable, Codable, Equatable, Hashable {
         try c.encodeIfPresent(linePosition, forKey: .linePosition)
         try c.encodeIfPresent(lineHungAt, forKey: .lineHungAt)
         try c.encodeIfPresent(fileBookmark, forKey: .fileBookmark)
+        try c.encodeIfPresent(lineCardSize, forKey: .lineCardSize)
         try c.encode(updatedAt, forKey: .updatedAt)
         try c.encode(createdAt, forKey: .createdAt)
     }

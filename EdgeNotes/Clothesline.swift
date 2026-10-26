@@ -525,11 +525,10 @@ struct ClotheslineView: View {
         GeometryReader { geo in
             let width = geo.size.width
             let shown = store.lineNotes
-            let k = settings.lineCardSize.scale
             let showClipboard = settings.clipboardHistoryEnabled
             let layout = RopeLayout.layout(
-                shown.filter { dragPositions[$0.id] == nil }.map { RopeLayout.Item(id: $0.id, position: CGFloat($0.linePosition ?? 0.5), width: RopeLayout.cardWidth * k) }
-                    + (showClipboard ? [RopeLayout.Item(id: ClipboardHistory.cardID, position: 1, width: (ClipboardCard.size.width + 16) * k)] : []),
+                shown.filter { dragPositions[$0.id] == nil }.map { RopeLayout.Item(id: $0.id, position: CGFloat($0.linePosition ?? 0.5), width: size(of: $0).metrics.width + 12) }
+                    + (showClipboard ? [RopeLayout.Item(id: ClipboardHistory.cardID, position: 1, width: settings.clipboardCardSize.clipboardSize.width + 16)] : []),
                 lo: Self.cardLo, hi: width - Self.cardLo,
                 // 左端留给钉住按钮，右端留给 ＋
                 edges: (Rope.endPadding + 14)...(width - Rope.endPadding - 22)
@@ -624,9 +623,10 @@ struct ClotheslineView: View {
         let t = width > 2 * Rope.endPadding ? (x - Rope.endPadding) / (width - 2 * Rope.endPadding) : 0.5
         let ropeY = Rope.y(at: min(1, max(0, t)), anchor: anchor, sag: sag)
         let hovered = state.hoveredID == note.id
-        let scale = settings.lineCardSize.scale * (dragging || hovered ? 1 : layout.scale)
+        let scale = dragging || hovered ? 1 : layout.scale
         return ClotheslineCard(
             note: note,
+            metrics: size(of: note).metrics,
             privacy: settings.privacyHideBodies,
             tilt: tilt(for: note.id),
             isDragging: dragging,
@@ -669,8 +669,8 @@ struct ClotheslineView: View {
         .onTapGesture { open(note) }
         .contextMenu { menu(for: note) }
         // 固定高的顶对齐框：卡片顶端（夹子）正好压在绳子上
-        .frame(width: Self.slotSize.width * 1.7, height: Self.slotSize.height * 1.7, alignment: .top)
-        .position(x: x, y: ropeY - 6 + Self.slotSize.height * 1.7 / 2)
+        .frame(width: Self.slotSize.width, height: Self.slotSize.height, alignment: .top)
+        .position(x: x, y: ropeY - 6 + Self.slotSize.height / 2)
         .zIndex(dragging ? 100 : (hovered ? 50 : Double(index)))
         .transition(.asymmetric(
             insertion: .offset(y: -80).combined(with: .opacity),
@@ -678,11 +678,17 @@ struct ClotheslineView: View {
         ))
     }
 
-    private static let slotSize = CGSize(width: 170, height: 215)
+    /// 卡片占位框：放得下最大尺寸（含倾斜、悬停放大）
+    private static let slotSize = CGSize(width: 300, height: 420)
 
-    /// 窗口高度：绳子 + 最高的卡片
-    static func panelHeight(for size: LineCardSize) -> CGFloat {
-        Rope.expandedAnchor + Rope.expandedSag + 6 + max(slotSize.height, ClipboardCard.size.height + 16) * size.scale
+    /// 窗口高度：绳子 + 最大尺寸的卡片（空白处点击会穿透，不挡下面的窗口）
+    static func panelHeight(for _: LineCardSize) -> CGFloat {
+        Rope.expandedAnchor + Rope.expandedSag + 6 + 410
+    }
+
+    /// 卡片实际大小：自己设过就用自己的，否则跟随默认
+    private func size(of note: Note) -> LineCardSize {
+        note.lineCardSize.flatMap(LineCardSize.init(rawValue:)) ?? settings.lineCardSize
     }
 
     /// scaleEffect(anchor: .top) 之后的实际占位
@@ -695,9 +701,10 @@ struct ClotheslineView: View {
         let t = width > 2 * Rope.endPadding ? (x - Rope.endPadding) / (width - 2 * Rope.endPadding) : 0.5
         let ropeY = Rope.y(at: min(1, max(0, t)), anchor: anchor, sag: sag)
         let hovered = state.hoveredID == ClipboardHistory.cardID
-        let scale = settings.lineCardSize.scale * (hovered ? 1 : layout.scale)
-        let box = CGSize(width: ClipboardCard.size.width + 16, height: ClipboardCard.size.height + 16)
-        return ClipboardCard(history: clipboard, privacy: settings.privacyHideBodies)
+        let scale = hovered ? 1 : layout.scale
+        let cardSize = settings.clipboardCardSize.clipboardSize
+        let box = CGSize(width: cardSize.width + 16, height: cardSize.height + 16)
+        return ClipboardCard(history: clipboard, privacy: settings.privacyHideBodies, size: cardSize)
             .fixedSize()
             .background(GeometryReader { g in
                 Color.clear.preference(key: CardFrameKey.self, value: [ClipboardHistory.cardID: Self.scaled(g.frame(in: .named("clothesline")), by: scale)])
@@ -708,8 +715,18 @@ struct ClotheslineView: View {
             }
             .scaleEffect(scale, anchor: .top)
             .animation(.spring(response: 0.3, dampingFraction: 0.8), value: scale)
-            .frame(width: box.width * 1.7, height: box.height * 1.7, alignment: .top)
-            .position(x: x, y: ropeY - 6 + box.height * 1.7 / 2)
+            .contextMenu {
+                Picker(L("大小"), selection: Binding(
+                    get: { settings.clipboardCardSize },
+                    set: { settings.setClipboardCardSize($0) }
+                )) {
+                    ForEach(LineCardSize.allCases) { Text($0.label).tag($0) }
+                }
+                Divider()
+                Button(L("清空剪贴板历史"), role: .destructive) { clipboard.clear() }
+            }
+            .frame(width: box.width, height: box.height, alignment: .top)
+            .position(x: x, y: ropeY - 6 + box.height / 2)
             .zIndex(hovered ? 50 : 40)
             .transition(.asymmetric(
                 insertion: .offset(y: -80).combined(with: .opacity),
@@ -755,6 +772,22 @@ struct ClotheslineView: View {
                 }
             }
         }
+        Menu(L("大小")) {
+            ForEach(LineCardSize.allCases) { size in
+                Button {
+                    store.setLineCardSize(id: note.id, size)
+                } label: {
+                    if note.lineCardSize == size.rawValue { Label(size.label, systemImage: "checkmark") } else { Text(size.label) }
+                }
+            }
+            Divider()
+            Button {
+                store.setLineCardSize(id: note.id, nil)
+            } label: {
+                let title = LF("跟随默认（%@）", settings.lineCardSize.label)
+                if note.lineCardSize == nil { Label(title, systemImage: "checkmark") } else { Text(title) }
+            }
+        }
         Divider()
         Button(L("从挂绳取下")) { withAnimation { store.takeOffLine(id: note.id) } }
         Button(L("删除"), role: .destructive) { withAnimation { store.softDelete(id: note.id) } }
@@ -773,12 +806,17 @@ struct ClotheslineView: View {
         return min(1, max(0, (x - lo) / (hi - lo)))
     }
 
-    /// 每张卡固定的小角度，看起来像随手夹上去的
-    private func tilt(for id: UUID) -> Double {
-        let v = id.uuid
-        let seed = Int(v.0) ^ Int(v.5) ^ Int(v.11)
-        return Double(seed % 9) - 4
+    /// 每张卡固定的随机角度（-7°…7°，不会太正），看起来像随手夹上去的
+    static func tilt(for id: UUID) -> Double {
+        // FNV-1a 把整个 UUID 打散，相邻的卡片角度也差得开
+        var h: UInt64 = 0xcbf29ce484222325
+        withUnsafeBytes(of: id.uuid) { for b in $0 { h = (h ^ UInt64(b)) &* 0x100000001b3 } }
+        let unit = Double(h % 10_000) / 10_000          // 0…1
+        let magnitude = 1.5 + unit * 5.5                 // 1.5…7
+        return (h >> 32) & 1 == 0 ? magnitude : -magnitude
     }
+
+    private func tilt(for id: UUID) -> Double { Self.tilt(for: id) }
 
     // MARK: Actions
 
@@ -841,6 +879,7 @@ struct ClotheslineView: View {
 
 struct ClotheslineCard: View {
     let note: Note
+    var metrics: CardMetrics = LineCardSize.small.metrics
     let privacy: Bool
     let tilt: Double
     let isDragging: Bool
@@ -854,7 +893,7 @@ struct ClotheslineCard: View {
         ZStack(alignment: .top) {
             Group {
                 if let url = note.fileLink {
-                    FileCardBody(url: url, privacy: privacy)
+                    FileCardBody(url: url, privacy: privacy, metrics: metrics)
                 } else if note.isImageOnly, let path = note.attachmentPaths.first {
                     photo(path)
                 } else if let url = note.webLink {
@@ -902,9 +941,9 @@ struct ClotheslineCard: View {
     }
 
     private func photoSize(_ image: NSImage?) -> CGSize {
-        guard let image, image.size.width > 0, image.size.height > 0 else { return CGSize(width: 120, height: 90) }
-        let w: CGFloat = 124
-        let h = min(160, max(70, w * image.size.height / image.size.width))
+        guard let image, image.size.width > 0, image.size.height > 0 else { return CGSize(width: metrics.photoWidth, height: metrics.photoWidth * 0.75) }
+        let w = metrics.photoWidth
+        let h = min(metrics.photoMaxHeight, max(70, w * image.size.height / image.size.width))
         return CGSize(width: w, height: h)
     }
 
@@ -921,7 +960,7 @@ struct ClotheslineCard: View {
             Text(note.displayTitle)
                 .font(.system(size: 11.5, weight: .semibold))
                 .foregroundStyle(.black.opacity(0.85))
-                .lineLimit(4)
+                .lineLimit(metrics.bodyLines > 5 ? 6 : 4)
             Spacer(minLength: 0)
             HStack(spacing: 3) {
                 Image(systemName: "arrow.up.right.square")
@@ -933,7 +972,7 @@ struct ClotheslineCard: View {
         .padding(.horizontal, 9)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .frame(width: 128, height: 112, alignment: .topLeading)
+        .frame(width: metrics.width, height: metrics.minHeight + 16, alignment: .topLeading)
         .background(RoundedRectangle(cornerRadius: 4).fill(note.color.normalized == .glass ? Color.white : note.color.fill))
         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.black.opacity(0.06)))
         .help(url.absoluteString)
@@ -946,15 +985,15 @@ struct ClotheslineCard: View {
                 if note.reminderAt != nil { Image(systemName: "bell.fill").font(.system(size: 8)) }
                 Text(note.displayTitle)
                     .font(.system(size: 11.5, weight: .semibold))
-                    .lineLimit(2)
+                    .lineLimit(metrics.titleLines)
             }
             if privacy || note.isLocked {
                 Text("•••").font(.system(size: 11)).foregroundStyle(.secondary)
             } else {
-                Text(previewText)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.primary.opacity(0.75))
-                    .lineLimit(5)
+                Text(previewAttributed)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.primary.opacity(0.78))
+                    .lineLimit(metrics.bodyLines)
             }
             Spacer(minLength: 0)
         }
@@ -962,8 +1001,8 @@ struct ClotheslineCard: View {
         .padding(.horizontal, 9)
         .padding(.top, 12)
         .padding(.bottom, 9)
-        .frame(width: 128, alignment: .leading)
-        .frame(minHeight: 96, maxHeight: 150, alignment: .top)
+        .frame(width: metrics.width, alignment: .leading)
+        .frame(minHeight: metrics.minHeight, maxHeight: metrics.maxHeight, alignment: .top)
         .background {
             if note.color.normalized == .glass {
                 RoundedRectangle(cornerRadius: 4).fill(.regularMaterial)
@@ -983,12 +1022,25 @@ struct ClotheslineCard: View {
         if note.title.trimmingCharacters(in: .whitespaces).isEmpty {
             body = body.split(separator: "\n", omittingEmptySubsequences: true).dropFirst().joined(separator: "\n")
         }
-        // 待办行显示成勾选框
+        // 列表 / 待办显示成符号，保留缩进
         body = body.components(separatedBy: "\n").map { line in
-            guard let item = Checklist.parse(line) else { return line }
-            return (item.done ? "☑ " : "☐ ") + item.text
+            let parsed = NoteBodyRendering.parseLine(line)
+            guard let kind = parsed.kind else { return line }
+            let indent = String(repeating: "  ", count: parsed.level)
+            switch kind {
+            case .bullet: return indent + "• " + parsed.rest
+            case .number(let n): return indent + "\(n). " + parsed.rest
+            case .todo(let done): return indent + (done ? "☑ " : "☐ ") + parsed.rest
+            }
         }.joined(separator: "\n")
         return body.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// 预览渲染粗体、链接（不显示 ** 之类的标记）
+    private var previewAttributed: AttributedString {
+        let text = previewText
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
     }
 }
 
@@ -1043,6 +1095,7 @@ enum FaviconCache {
 private struct FileCardBody: View {
     let url: URL
     let privacy: Bool
+    var metrics: CardMetrics = LineCardSize.small.metrics
     @State private var thumb: NSImage?
 
     private var exists: Bool { FileManager.default.fileExists(atPath: url.path) }
@@ -1061,8 +1114,9 @@ private struct FileCardBody: View {
 
     private var photo: some View {
         let size: CGSize = {
-            guard let thumb, thumb.size.width > 0 else { return CGSize(width: 124, height: 90) }
-            return CGSize(width: 124, height: min(160, max(70, 124 * thumb.size.height / thumb.size.width)))
+            let w = metrics.photoWidth
+            guard let thumb, thumb.size.width > 0 else { return CGSize(width: w, height: w * 0.75) }
+            return CGSize(width: w, height: min(metrics.photoMaxHeight, max(70, w * thumb.size.height / thumb.size.width)))
         }()
         return VStack(spacing: 0) {
             Group {
@@ -1093,7 +1147,7 @@ private struct FileCardBody: View {
                     Image(systemName: "questionmark.folder").font(.system(size: 34)).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 64, height: 64)
+            .frame(width: metrics.iconSize, height: metrics.iconSize)
             Text(url.lastPathComponent)
                 .font(.system(size: 10.5, weight: .semibold))
                 .foregroundStyle(.black.opacity(0.82))
@@ -1107,7 +1161,7 @@ private struct FileCardBody: View {
         .padding(.horizontal, 8)
         .padding(.top, 14)
         .padding(.bottom, 9)
-        .frame(width: 128)
+        .frame(width: metrics.width)
         .background(RoundedRectangle(cornerRadius: 4).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.black.opacity(0.06)))
     }
@@ -1130,7 +1184,7 @@ enum FileThumbnailCache {
         if let hit = cache[url] { return hit }
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
         let request = QLThumbnailGenerator.Request(
-            fileAt: url, size: CGSize(width: 260, height: 260),
+            fileAt: url, size: CGSize(width: 500, height: 500),
             scale: NSScreen.main?.backingScaleFactor ?? 2, representationTypes: .all
         )
         guard let rep = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request) else { return nil }
@@ -1242,7 +1296,7 @@ enum ThumbnailCache {
         if let hit = cache.object(forKey: markdownPath as NSString) { return hit }
         guard let url = AttachmentStore.absoluteURL(forMarkdownPath: markdownPath),
               let image = NSImage(contentsOf: url) else { return nil }
-        let thumb = NoteBodyRendering.scale(image, maxWidth: 260)
+        let thumb = NoteBodyRendering.scale(image, maxWidth: 500)
         cache.setObject(thumb, forKey: markdownPath as NSString)
         return thumb
     }

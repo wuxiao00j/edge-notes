@@ -211,9 +211,8 @@ final class ClipboardHistory: ObservableObject {
 struct ClipboardCard: View {
     @ObservedObject var history: ClipboardHistory
     let privacy: Bool
+    var size: CGSize = LineCardSize.small.clipboardSize
     @State private var hoveredRow: UUID?
-
-    static let size = CGSize(width: 236, height: 206)
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -252,13 +251,13 @@ struct ClipboardCard: View {
                     }
                 }
             }
-            .frame(width: Self.size.width, height: Self.size.height)
+            .frame(width: size.width, height: size.height)
             .background(RoundedRectangle(cornerRadius: 5).fill(Color(red: 0.97, green: 0.97, blue: 0.95)))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.black.opacity(0.07)))
             .foregroundStyle(Color.black.opacity(0.82))
             .padding(.top, 8)
 
-            HStack(spacing: Self.size.width - 70) {
+            HStack(spacing: size.width - 70) {
                 Clothespin()
                 Clothespin()
             }
@@ -303,13 +302,13 @@ struct ClipboardCard: View {
         case .text:
             Text(entry.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
                 .font(.system(size: 10.5))
-                .lineLimit(2)
+                .lineLimit(size.width > 260 ? 4 : 2)
                 .blur(radius: privacy ? 4 : 0)
         case .image:
             HStack(spacing: 6) {
                 if let url = history.imageURL(for: entry), let thumb = ClipboardThumbs.image(url) {
                     Image(nsImage: thumb).resizable().aspectRatio(contentMode: .fill)
-                        .frame(width: 54, height: 36).clipShape(RoundedRectangle(cornerRadius: 3))
+                        .frame(width: size.width > 260 ? 90 : 54, height: size.width > 260 ? 60 : 36).clipShape(RoundedRectangle(cornerRadius: 3))
                         .blur(radius: privacy ? 5 : 0)
                 }
                 Text(L("图片")).font(.system(size: 10)).foregroundStyle(.secondary)

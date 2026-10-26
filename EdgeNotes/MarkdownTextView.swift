@@ -374,111 +374,291 @@ final class TypingTextView: NSTextView {
         let point = convert(event.locationInWindow, from: nil)
         var fraction: CGFloat = 0
         let idx = lm.characterIndex(for: point, in: tc, fractionOfDistanceBetweenInsertionPoints: &fraction)
-        guard idx < ts.length else { return false }
-        var eff = NSRange(location: 0, length: 0)
-        guard let box = ts.attribute(.attachment, at: idx, effectiveRange: &eff) as? EdgeNotesCheckboxAttachment else {
+        guard idx < ts.length,
+              let box = ts.attribute(.attachment, at: idx, effectiveRange: nil) as? EdgeNotesCheckboxAttachment else {
             return false
         }
-        // Hit only near the glyph
+        // 只在勾选框附近命中
         let glyphRange = lm.glyphRange(forCharacterRange: NSRange(location: idx, length: 1), actualCharacterRange: nil)
         let rect = lm.boundingRect(forGlyphRange: glyphRange, in: tc)
-        let inset = textContainerOrigin
-        let hit = rect.offsetBy(dx: inset.x, dy: inset.y).insetBy(dx: -6, dy: -6)
+        let hit = rect.offsetBy(dx: textContainerOrigin.x, dy: textContainerOrigin.y).insetBy(dx: -6, dy: -6)
         guard hit.contains(point) else { return false }
-
-        box.isChecked.toggle()
-        // Refresh attachment display
-        lm.invalidateLayout(forCharacterRange: NSRange(location: idx, length: 1), actualCharacterRange: nil)
-        lm.invalidateDisplay(forCharacterRange: NSRange(location: idx, length: 1))
-        // Strike / unstrike the rest of the line
-        let ns = string as NSString
-        let lineRange = ns.lineRange(for: NSRange(location: idx, length: 0))
-        let afterBox = NSRange(location: idx + 1, length: max(0, NSMaxRange(lineRange) - (idx + 1)))
-        if afterBox.length > 0 {
-            if box.isChecked {
-                ts.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: afterBox)
-                ts.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: afterBox)
-            } else {
-                ts.removeAttribute(.strikethroughStyle, range: afterBox)
-                ts.addAttribute(.foregroundColor, value: NSColor.labelColor, range: afterBox)
-            }
-        }
-        didChangeText()
+        let para = (string as NSString).paragraphRange(for: NSRange(location: idx, length: 0))
+        let info = NoteBodyRendering.paragraphInfo(in: ts, paragraph: para)
+        rewriteParagraphs([para]) { _ in (.todo(!box.isChecked), info.level) }
         return true
     }
 
-    // MARK: - Newline continues list / todo
+    // MARK: - 列表编辑（段落模型）
+
+    /// 选区覆盖到的所有段落
+    func selectedParagraphs() -> [NSRange] {
+        let ns = string as NSString
+        let sel = selectedRange()
+        var out: [NSRange] = []
+        var loc = sel.location
+        repeat {
+            let para = ns.paragraphRange(for: NSRange(location: min(loc, ns.length), length: 0))
+            out.append(para)
+            loc = NSMaxRange(para)
+        } while loc < NSMaxRange(sel) && loc < ns.length
+        return out
+    }
+
+    func info(_ para: NSRange) -> NoteBodyRendering.ParagraphInfo {
+        NoteBodyRendering.paragraphInfo(in: textStorage ?? NSTextStorage(), paragraph: para)
+    }
+
+    private var bodyFont: NSFont { font ?? .systemFont(ofSize: 13) }
+
+    /// 把若干段落改成新的列表格式（nil = 普通段落），作为一次可撤销的编辑；保持光标在正文中的相对位置
+    func rewriteParagraphs(_ paragraphs: [NSRange], to format: (NoteBodyRendering.ParagraphInfo) -> (ListKind?, Int)) {
+        guard let ts = textStorage, let first = paragraphs.first, let last = paragraphs.last else { return }
+        let block = NSRange(location: first.location, length: NSMaxRange(last) - first.location)
+        let sel = selectedRange()
+        let rebuilt = NSMutableAttributedString()
+        var newSel = sel
+        var shift = 0
+        for para in paragraphs {
+            let old = info(para)
+            let (kind, level) = format(old)
+            let start = rebuilt.length
+            if let kind { rebuilt.append(NoteBodyRendering.marker(kind, level: level, font: bodyFont)) }
+            let content = NSMutableAttributedString(attributedString: ts.attributedSubstring(from: old.content))
+            let full = NSRange(location: 0, length: content.length)
+            content.removeAttribute(EdgeNotesAttrs.listMarker, range: full)
+            content.removeAttribute(EdgeNotesAttrs.listLevel, range: full)
+            var checked = false
+            if case .todo(let c)? = kind { checked = c }
+            if checked {
+                content.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: full)
+                content.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: full)
+            } else {
+                content.removeAttribute(.strikethroughStyle, range: full)
+                content.addAttribute(.foregroundColor, value: NSColor.labelColor, range: full)
+            }
+            rebuilt.append(content)
+            if NSMaxRange(para) > NSMaxRange(old.content) {
+                rebuilt.append(ts.attributedSubstring(from: NSRange(location: NSMaxRange(old.content), length: NSMaxRange(para) - NSMaxRange(old.content))))
+            }
+            let style = kind != nil ? NoteBodyRendering.listParagraphStyle(level: level) : NoteBodyRendering.plainParagraphStyle
+            rebuilt.addAttribute(.paragraphStyle, value: style, range: NSRange(location: start, length: rebuilt.length - start))
+            // 光标跟着正文走：在正文里就按标记长度变化平移；在旧标记里就落到新正文开头
+            let newMarkerLen = kind.map { NoteBodyRendering.marker($0, level: level, font: bodyFont).length } ?? 0
+            let delta = (rebuilt.length - start) - para.length
+            if sel.location >= old.content.location && sel.location <= NSMaxRange(para) {
+                newSel.location = sel.location + shift + (newMarkerLen - old.marker.length)
+            } else if sel.location >= para.location && sel.location < old.content.location {
+                newSel.location = para.location + shift + newMarkerLen
+            }
+            shift += delta
+        }
+        guard shouldChangeText(in: block, replacementString: rebuilt.string) else { return }
+        ts.replaceCharacters(in: block, with: rebuilt)
+        didChangeText()
+        let maxLen = (string as NSString).length
+        newSel.location = min(max(0, newSel.location), maxLen)
+        newSel.length = sel.length > 0 ? min(rebuilt.length, maxLen - newSel.location) : 0
+        if sel.length > 0 { newSel = NSRange(location: block.location, length: rebuilt.length) }
+        setSelectedRange(newSel)
+        renumberLists()
+    }
+
+    /// 切换选中各行的列表格式：全都是这种就取消，否则统一改成这种
+    func toggleList(_ kind: ListKind) {
+        let paras = selectedParagraphs()
+        let allSame = paras.allSatisfy { info($0).kind.map { $0.sameFamily(kind) } ?? false }
+        rewriteParagraphs(paras) { old in
+            allSame ? (nil, 0) : (kind, old.kind == nil ? 0 : old.level)
+        }
+    }
+
+    /// 编号列表按层级重新连续编号（只改有变化的标记）
+    func renumberLists() {
+        guard let ts = textStorage else { return }
+        let ns = string as NSString
+        var counters = [Int](repeating: 0, count: NoteBodyRendering.maxListLevel + 1)
+        var fixes: [(NSRange, Int, Int)] = []
+        var loc = 0
+        while loc < ns.length {
+            let para = ns.paragraphRange(for: NSRange(location: loc, length: 0))
+            let i = info(para)
+            if let kind = i.kind {
+                for l in (i.level + 1)..<counters.count { counters[l] = 0 }
+                if case .number(let n) = kind {
+                    counters[i.level] += 1
+                    if n != counters[i.level] { fixes.append((i.marker, counters[i.level], i.level)) }
+                } else {
+                    counters[i.level] = 0
+                }
+            } else if i.content.length > 0 {
+                counters = counters.map { _ in 0 }
+            }
+            loc = NSMaxRange(para)
+        }
+        guard !fixes.isEmpty else { return }
+        let sel = selectedRange()
+        var offset = 0
+        for (range, n, level) in fixes {
+            let r = NSRange(location: range.location + offset, length: range.length)
+            let marker = NoteBodyRendering.marker(.number(n), level: level, font: bodyFont)
+            guard shouldChangeText(in: r, replacementString: marker.string) else { continue }
+            ts.replaceCharacters(in: r, with: marker)
+            didChangeText()
+            offset += marker.length - range.length
+        }
+        setSelectedRange(NSRange(location: min(sel.location + offset, (string as NSString).length), length: 0))
+    }
 
     override func insertNewline(_ sender: Any?) {
-        guard isEditable, let ts = textStorage else {
-            super.insertNewline(sender)
+        guard isEditable, selectedRange().length == 0 else { super.insertNewline(sender); return }
+        let caret = selectedRange().location
+        let para = (string as NSString).paragraphRange(for: NSRange(location: caret, length: 0))
+        let i = info(para)
+        guard let kind = i.kind, caret >= i.content.location else { super.insertNewline(sender); return }
+        // 空的列表项：有缩进先退一级，否则结束列表
+        if i.content.length == 0 {
+            rewriteParagraphs([para]) { _ in i.level > 0 ? (kind, i.level - 1) : (nil, 0) }
             return
         }
-        let loc = selectedRange().location
-        let ns = string as NSString
-        let lineRange = ns.lineRange(for: NSRange(location: min(loc, max(0, ns.length - 1)), length: 0))
-        let lineStart = lineRange.location
-        // Detect checkbox or bullet at line start
-        if lineStart < ts.length,
-           ts.attribute(.attachment, at: lineStart, effectiveRange: nil) is EdgeNotesCheckboxAttachment {
-            // If line has no text after marker+space, exit list
-            let contentStart = min(lineStart + 2, NSMaxRange(lineRange)) // box + space
-            let contentRange = NSRange(location: contentStart, length: max(0, NSMaxRange(lineRange) - contentStart))
-            var content = ns.substring(with: contentRange)
-            if content.hasSuffix("\n") { content = String(content.dropLast()) }
-            if content.trimmingCharacters(in: .whitespaces).isEmpty {
-                // remove empty todo line and insert plain newline
-                let replaceRange = NSRange(location: lineStart, length: loc - lineStart)
-                if shouldChangeText(in: replaceRange, replacementString: "\n") {
-                    replaceCharacters(in: replaceRange, with: "\n")
-                    didChangeText()
-                }
+        let next: ListKind
+        switch kind {
+        case .bullet: next = .bullet
+        case .number(let n): next = .number(n + 1)
+        case .todo: next = .todo(false)
+        }
+        let chunk = NSMutableAttributedString(string: "\n", attributes: [.font: bodyFont, .paragraphStyle: NoteBodyRendering.listParagraphStyle(level: i.level)])
+        chunk.append(NoteBodyRendering.marker(next, level: i.level, font: bodyFont))
+        let range = selectedRange()
+        guard shouldChangeText(in: range, replacementString: chunk.string), let ts = textStorage else { return }
+        ts.replaceCharacters(in: range, with: chunk)
+        // 新段落里被带过去的正文去掉删除线（新待办未完成）
+        let newPara = (string as NSString).paragraphRange(for: NSRange(location: range.location + 1, length: 0))
+        let ni = info(newPara)
+        ts.removeAttribute(.strikethroughStyle, range: ni.content)
+        ts.addAttribute(.foregroundColor, value: NSColor.labelColor, range: ni.content)
+        ts.addAttribute(.paragraphStyle, value: NoteBodyRendering.listParagraphStyle(level: i.level), range: newPara)
+        didChangeText()
+        setSelectedRange(NSRange(location: range.location + chunk.length, length: 0))
+        renumberLists()
+    }
+
+    /// 在列表标记后按删除：先退缩进，再去掉标记
+    override func deleteBackward(_ sender: Any?) {
+        let sel = selectedRange()
+        if isEditable, sel.length == 0 {
+            let para = (string as NSString).paragraphRange(for: NSRange(location: sel.location, length: 0))
+            let i = info(para)
+            if let kind = i.kind, sel.location == i.content.location {
+                rewriteParagraphs([para]) { _ in i.level > 0 ? (kind, i.level - 1) : (nil, 0) }
                 return
             }
-            let fresh = NoteBodyRendering.checkboxAttachment(checked: false)
-            let chunk = NSMutableAttributedString(string: "\n")
-            let boxStr = NSMutableAttributedString(attachment: fresh)
-            boxStr.addAttribute(.font, value: font ?? NSFont.systemFont(ofSize: 13), range: NSRange(location: 0, length: 1))
-            chunk.append(boxStr)
-            chunk.append(NSAttributedString(string: " ", attributes: typingAttributes))
-            let range = selectedRange()
-            if shouldChangeText(in: range, replacementString: chunk.string) {
-                ts.replaceCharacters(in: range, with: chunk)
-                didChangeText()
-                setSelectedRange(NSRange(location: range.location + chunk.length, length: 0))
-            }
+        }
+        super.deleteBackward(sender)
+    }
+
+    override func insertTab(_ sender: Any?) {
+        if isEditable, shiftLevel(by: 1) { return }
+        super.insertTab(sender)
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        if isEditable, shiftLevel(by: -1) { return }
+        super.insertBacktab(sender)
+    }
+
+    /// 选中的列表行整体缩进 / 退缩进；没有列表行返回 false
+    private func shiftLevel(by delta: Int) -> Bool {
+        let paras = selectedParagraphs()
+        guard paras.contains(where: { info($0).kind != nil }) else { return false }
+        rewriteParagraphs(paras) { old in
+            guard let kind = old.kind else { return (nil, 0) }
+            return (kind, min(NoteBodyRendering.maxListLevel, max(0, old.level + delta)))
+        }
+        return true
+    }
+
+    /// 输入快捷方式：行首敲「- 」「* 」「1. 」「[] 」「[ ] 」自动变成列表 / 待办
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        super.insertText(string, replacementRange: replacementRange)
+        guard isEditable, (string as? String) == " " || (string as? NSAttributedString)?.string == " " else { return }
+        let caret = selectedRange().location
+        let ns = self.string as NSString
+        let para = ns.paragraphRange(for: NSRange(location: caret, length: 0))
+        let i = info(para)
+        let typed = ns.substring(with: NSRange(location: i.content.location, length: max(0, caret - i.content.location)))
+        var kind: ListKind?
+        if i.kind == nil {
+            if typed == "- " || typed == "* " { kind = .bullet }
+            else if typed == "[] " || typed == "[ ] " || typed == "- [ ] " { kind = .todo(false) }
+            else if typed == "[x] " || typed == "- [x] " { kind = .todo(true) }
+            else if typed.range(of: #"^\d{1,3}[.)] $"#, options: .regularExpression) != nil { kind = .number(Int(typed.prefix { $0.isNumber }) ?? 1) }
+        } else if case .bullet? = i.kind, typed == "[] " || typed == "[ ] " {
+            kind = .todo(false)
+        }
+        guard let kind, let ts = textStorage else { return }
+        let typedRange = NSRange(location: i.content.location, length: (typed as NSString).length)
+        guard shouldChangeText(in: typedRange, replacementString: "") else { return }
+        ts.replaceCharacters(in: typedRange, with: "")
+        didChangeText()
+        setSelectedRange(NSRange(location: typedRange.location, length: 0))
+        let newPara = (self.string as NSString).paragraphRange(for: NSRange(location: typedRange.location, length: 0))
+        rewriteParagraphs([newPara]) { old in (kind, old.level) }
+    }
+
+    /// 光标移动后，新输入的文字不要沿用列表标记的属性
+    override func setSelectedRanges(_ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool) {
+        super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+        var attrs = typingAttributes
+        if attrs[EdgeNotesAttrs.listMarker] != nil || attrs[.attachment] != nil {
+            attrs[EdgeNotesAttrs.listMarker] = nil
+            attrs[EdgeNotesAttrs.listLevel] = nil
+            attrs[.attachment] = nil
+            attrs[.foregroundColor] = NSColor.labelColor
+            attrs[.font] = bodyFont
+            typingAttributes = attrs
+        }
+    }
+
+    /// 粗体开关：有选区时整段都粗就取消，否则加粗；没有选区时切换接下来输入的字
+    func toggleBold() {
+        guard let ts = textStorage else { return }
+        let range = selectedRange()
+        func isBold(_ f: NSFont?) -> Bool { f.map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } ?? false }
+        if range.length == 0 {
+            let current = typingAttributes[.font] as? NSFont ?? bodyFont
+            typingAttributes[.font] = isBold(current)
+                ? NSFontManager.shared.convert(current, toNotHaveTrait: .boldFontMask)
+                : NSFontManager.shared.convert(current, toHaveTrait: .boldFontMask)
             return
         }
-        if lineStart < ts.length,
-           ts.attribute(EdgeNotesAttrs.listMarker, at: lineStart, effectiveRange: nil) as? String == "ul" {
-            let contentStart = min(lineStart + 2, NSMaxRange(lineRange)) // "• "
-            var content = ns.substring(with: NSRange(location: contentStart, length: max(0, NSMaxRange(lineRange) - contentStart)))
-            if content.hasSuffix("\n") { content = String(content.dropLast()) }
-            if content.trimmingCharacters(in: .whitespaces).isEmpty {
-                let replaceRange = NSRange(location: lineStart, length: loc - lineStart)
-                if shouldChangeText(in: replaceRange, replacementString: "\n") {
-                    replaceCharacters(in: replaceRange, with: "\n")
-                    didChangeText()
-                }
-                return
-            }
-            var markerAttrs = typingAttributes
-            markerAttrs[EdgeNotesAttrs.listMarker] = "ul"
-            markerAttrs[.foregroundColor] = NSColor.secondaryLabelColor
-            let chunk = NSMutableAttributedString(string: "\n")
-            chunk.append(NSAttributedString(string: "• ", attributes: markerAttrs))
-            let range = selectedRange()
-            ts.replaceCharacters(in: range, with: chunk)
-            didChangeText()
-            setSelectedRange(NSRange(location: range.location + chunk.length, length: 0))
-            return
+        var allBold = true
+        ts.enumerateAttribute(.font, in: range) { value, _, stop in
+            if !isBold(value as? NSFont) { allBold = false; stop.pointee = true }
         }
-        super.insertNewline(sender)
+        guard shouldChangeText(in: range, replacementString: nil) else { return }
+        ts.beginEditing()
+        ts.enumerateAttribute(.font, in: range) { value, sub, _ in
+            // 列表标记不参与加粗
+            if ts.attribute(EdgeNotesAttrs.listMarker, at: sub.location, effectiveRange: nil) != nil { return }
+            let f = value as? NSFont ?? bodyFont
+            let nf = allBold ? NSFontManager.shared.convert(f, toNotHaveTrait: .boldFontMask)
+                             : NSFontManager.shared.convert(f, toHaveTrait: .boldFontMask)
+            ts.addAttribute(.font, value: nf, range: sub)
+        }
+        ts.endEditing()
+        didChangeText()
     }
 
     // MARK: - Paste / Drag images
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown, isEditable, window?.firstResponder === self,
+           event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command,
+           event.charactersIgnoringModifiers == "b" {
+            toggleBold()
+            return true
+        }
         if event.type == .keyDown,
            event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command,
            event.charactersIgnoringModifiers == "v" {
@@ -760,93 +940,23 @@ final class EditorBridge: ObservableObject {
     }
 
     func bold() {
-        guard let tv = textView, let ts = tv.textStorage else { return }
         focus()
-        let range = tv.selectedRange()
-        if range.length == 0 {
-            let font = (tv.typingAttributes[.font] as? NSFont) ?? tv.font ?? NSFont.systemFont(ofSize: 13)
-            let bold = NSFontManager.shared.convert(font, toHaveTrait: .boldFontMask)
-            var attrs = tv.typingAttributes
-            attrs[.font] = bold
-            let placeholder = NSAttributedString(string: L("粗体"), attributes: attrs)
-            ts.replaceCharacters(in: range, with: placeholder)
-            tv.didChangeText()
-            tv.setSelectedRange(NSRange(location: range.location, length: (placeholder.string as NSString).length))
-            // Keep typing bold until toggled
-            tv.typingAttributes[.font] = bold
-            return
-        }
-        ts.applyFontTraits(.boldFontMask, range: range)
-        tv.didChangeText()
+        (textView as? TypingTextView)?.toggleBold()
     }
 
     func list() {
-        guard let tv = textView, let ts = tv.textStorage else { return }
         focus()
-        let range = tv.selectedRange()
-        var markerAttrs = tv.typingAttributes
-        markerAttrs[EdgeNotesAttrs.listMarker] = "ul"
-        markerAttrs[.foregroundColor] = NSColor.secondaryLabelColor
-        let chunk = NSMutableAttributedString()
-        // Ensure start of line
-        if range.location > 0 {
-            let prev = (tv.string as NSString).substring(with: NSRange(location: range.location - 1, length: 1))
-            if prev != "\n" {
-                chunk.append(NSAttributedString(string: "\n", attributes: tv.typingAttributes))
-            }
-        }
-        chunk.append(NSAttributedString(string: "• ", attributes: markerAttrs))
-        if range.length == 0 {
-            let placeholder = NSAttributedString(string: L("列表项"), attributes: tv.typingAttributes)
-            chunk.append(placeholder)
-            ts.replaceCharacters(in: range, with: chunk)
-            tv.didChangeText()
-            let start = range.location + chunk.length - placeholder.length
-            tv.setSelectedRange(NSRange(location: start, length: placeholder.length))
-        } else {
-            // Turn each selected line into a bullet
-            let ns = tv.string as NSString
-            let lineRange = ns.lineRange(for: range)
-            let block = ns.substring(with: lineRange)
-            let lines = block.components(separatedBy: "\n")
-            let rebuilt = NSMutableAttributedString()
-            for (i, line) in lines.enumerated() {
-                if i > 0 { rebuilt.append(NSAttributedString(string: "\n", attributes: tv.typingAttributes)) }
-                if line.isEmpty && i == lines.count - 1 { continue }
-                // strip existing markdown / bullet
-                var body = line
-                if body.hasPrefix("• ") { body = String(body.dropFirst(2)) }
-                if body.hasPrefix("- ") { body = String(body.dropFirst(2)) }
-                rebuilt.append(NSAttributedString(string: "• ", attributes: markerAttrs))
-                rebuilt.append(NSAttributedString(string: body, attributes: tv.typingAttributes))
-            }
-            ts.replaceCharacters(in: lineRange, with: rebuilt)
-            tv.didChangeText()
-        }
+        (textView as? TypingTextView)?.toggleList(.bullet)
+    }
+
+    func numbered() {
+        focus()
+        (textView as? TypingTextView)?.toggleList(.number(1))
     }
 
     func todo() {
-        guard let tv = textView, let ts = tv.textStorage else { return }
         focus()
-        let range = tv.selectedRange()
-        let chunk = NSMutableAttributedString()
-        if range.location > 0 {
-            let prev = (tv.string as NSString).substring(with: NSRange(location: range.location - 1, length: 1))
-            if prev != "\n" {
-                chunk.append(NSAttributedString(string: "\n", attributes: tv.typingAttributes))
-            }
-        }
-        let box = NoteBodyRendering.checkboxAttachment(checked: false)
-        let boxStr = NSMutableAttributedString(attachment: box)
-        boxStr.addAttribute(.font, value: tv.font ?? NSFont.systemFont(ofSize: 13), range: NSRange(location: 0, length: 1))
-        chunk.append(boxStr)
-        chunk.append(NSAttributedString(string: " ", attributes: tv.typingAttributes))
-        let placeholder = NSAttributedString(string: L("待办"), attributes: tv.typingAttributes)
-        chunk.append(placeholder)
-        ts.replaceCharacters(in: range, with: chunk)
-        tv.didChangeText()
-        let start = range.location + chunk.length - placeholder.length
-        tv.setSelectedRange(NSRange(location: start, length: placeholder.length))
+        (textView as? TypingTextView)?.toggleList(.todo(false))
     }
 
     func wrapSelection(left: String, right: String, placeholder: String = L("文本")) {
