@@ -23,10 +23,10 @@ APP="$OUT/Build/Products/Release/EdgeNotes.app"
 ZIP="$ROOT/build/EdgeNotes-macOS.zip"
 SPARKLE_BIN="$ROOT/build/SourcePackages/artifacts/sparkle/Sparkle/bin"
 
-[ -z "$(git status --porcelain)" ] || { echo "工作区有未提交的改动，先提交再发布"; exit 1; }
-# App 从 main 分支读取 appcast.xml，必须在 main 上发布
-[ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] || { echo "请在 main 分支上运行"; exit 1; }
-git pull --ff-only
+[ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "工作区有未提交的改动，先提交再发布"; exit 1; }
+# App 从 main 分支读取 appcast.xml：必须从 origin/main 的最新提交发布（分支名不限，可在 worktree 里跑）
+git fetch -q origin
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "请先切到 origin/main 的最新提交再发布"; exit 1; }
 
 echo "==> 版本号 $VERSION ($BUILD)"
 sed -i '' -E "s/MARKETING_VERSION: \"[^\"]+\"/MARKETING_VERSION: \"$VERSION\"/; s/CURRENT_PROJECT_VERSION: \"[^\"]+\"/CURRENT_PROJECT_VERSION: \"$BUILD\"/" project.yml
@@ -88,7 +88,7 @@ echo "==> 提交版本号与 appcast，打标签，发布 Release"
 git add project.yml EdgeNotes.xcodeproj appcast.xml
 git commit -m "Release v$VERSION"
 git tag "v$VERSION"
-git push origin HEAD "v$VERSION"
+git push origin HEAD:main "v$VERSION"
 gh release create "v$VERSION" "$ZIP" --repo "$REPO" --title "EdgeNotes v$VERSION" --notes-file "${RELEASE_NOTES:-/dev/null}" --latest
 
 echo "==> 完成：$URL"
