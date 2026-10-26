@@ -6,6 +6,15 @@
     <description>贴边便签更新</description>
     <language>zh-Hans</language>
     <item>
+      <title>0.6.1</title>
+      <pubDate>Mon, 26 Oct 2026 17:40:43 +0800</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>0.6.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <link>https://github.com/wuxiao00j/edge-notes/releases/tag/v0.6.1</link>
+      <enclosure url="https://github.com/wuxiao00j/edge-notes/releases/download/v0.6.1/EdgeNotes-macOS.zip" sparkle:edSignature="w8afkkPqI5txXclrc22GK4LuItlUXdOLYqrk1fkVMZpZ/LMbi1BTiO+jv0P/VXvSLftyPkBYXHGRuKu4/7xXAg==" length="3437379" type="application/octet-stream"/>
+    </item>
+    <item>
       <title>0.6.0</title>
       <pubDate>Mon, 26 Oct 2026 14:54:01 +0800</pubDate>
       <sparkle:version>6</sparkle:version>
