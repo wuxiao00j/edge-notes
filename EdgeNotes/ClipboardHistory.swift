@@ -7,7 +7,12 @@ import Combine
 @MainActor
 final class ClipboardHistory: ObservableObject {
     static let shared = ClipboardHistory()
-    static let maxEntries = 40
+    /// 最大可选条数（界面文字等用）
+    static let maxEntries = 200
+    /// 当前保留条数与过期天数（0 = 不过期），由设置同步
+    var limit = 40
+    var retentionDays = 7
+    private var expiryTimer: Timer?
     /// 剪贴板卡片在挂绳排布里的固定 id
     static let cardID = UUID(uuidString: "C11B0A2D-0000-4000-8000-000000000001")!
     /// 文字最多保存这么长，避免巨大文本拖慢界面
@@ -52,6 +57,21 @@ final class ClipboardHistory: ObservableObject {
         load()
         // 启动前就在剪贴板里的内容不算「新复制」
         lastChangeCount = NSPasteboard.general.changeCount
+
+        // 条数 / 天数改小时立刻清理
+        AppSettings.shared.$clipboardMaxEntries
+            .combineLatest(AppSettings.shared.$clipboardRetentionDays)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] limit, days in
+                guard let self else { return }
+                self.limit = limit
+                self.retentionDays = days
+                self.prune()
+            }
+            .store(in: &cancellables)
+        expiryTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { _ in
+            Task { @MainActor in ClipboardHistory.shared.prune() }
+        }
 
         AppSettings.shared.$clipboardHistoryEnabled
             .receive(on: RunLoop.main)
@@ -116,8 +136,8 @@ final class ClipboardHistory: ObservableObject {
         } else {
             list.insert(entry, at: 0)
         }
-        while list.count > Self.maxEntries { deleteImage(of: list.removeLast()) }
         entries = list
+        prune()
         scheduleSave()
     }
 
@@ -186,6 +206,25 @@ final class ClipboardHistory: ObservableObject {
     }
 
     // MARK: - 存取
+
+    /// 去掉超出条数、超过保留天数的记录（连同图片文件）
+    func prune(now: Date = Date()) {
+        var list = entries
+        var removed: [Entry] = []
+        if retentionDays > 0 {
+            let cutoff = now.addingTimeInterval(-Double(retentionDays) * 86400)
+            removed += list.filter { $0.copiedAt < cutoff }
+            list.removeAll { $0.copiedAt < cutoff }
+        }
+        if list.count > limit {
+            removed += list[limit...]
+            list = Array(list.prefix(limit))
+        }
+        guard !removed.isEmpty else { return }
+        removed.forEach(deleteImage(of:))
+        entries = list
+        scheduleSave()
+    }
 
     private func load() {
         guard let dataURL, let data = try? Data(contentsOf: dataURL),

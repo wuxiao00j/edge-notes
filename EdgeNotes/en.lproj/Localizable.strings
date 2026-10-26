@@ -261,3 +261,16 @@
 "大小" = "Size";
 "跟随默认（%@）" = "Default (%@)";
 "拖出去即可把文件放进其它 App" = "Drag it out to drop the file into another app";
+"请作者喝杯咖啡 ☕" = "Buy the author a coffee ☕";
+"如果贴边便签帮到了你，欢迎用微信扫码随意打赏。你的支持是持续更新的动力。" = "If EdgeNotes helps you, you're welcome to tip any amount by scanning with WeChat. Your support keeps the updates coming.";
+"微信扫一扫" = "Scan with WeChat";
+"贴边便签永久免费、开源，打赏完全自愿。" = "EdgeNotes is free and open source forever — tipping is entirely optional.";
+"支持作者" = "Support the Author";
+"☕ 支持作者…" = "☕ Support the Author…";
+"贴边便签免费开源。觉得好用的话，可以请作者喝杯咖啡。" = "EdgeNotes is free and open source. If you like it, consider buying the author a coffee.";
+"保留条数" = "Keep";
+"%@ 条" = "%@ entries";
+"自动清理" = "Clean up";
+"不清理" = "Never";
+"%@ 天后" = "After %@ days";
+"点卡片里的任意一条即可重新复制（文字、图片、文件）。超出条数时最旧的会被挤掉；密码管理器等标记为隐私的内容不会记录。记录只保存在本机。" = "Click any entry on the card to copy it again (text, images, files). The oldest entries are dropped when the limit is reached; content marked private by password managers is never recorded. History stays on this Mac.";

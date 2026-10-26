@@ -26,6 +26,13 @@ final class AppSettings: ObservableObject {
     /// 记录复制过的内容，挂在绳上的剪贴板卡片里
     @Published var clipboardHistoryEnabled: Bool
     @Published var clipboardCardSize: LineCardSize
+    /// 剪贴板历史最多保留几条
+    @Published var clipboardMaxEntries: Int
+    /// 剪贴板历史超过几天自动清理；0 = 不清理
+    @Published var clipboardRetentionDays: Int
+
+    static let clipboardEntryOptions = [20, 40, 100, 200]
+    static let clipboardRetentionOptions = [0, 1, 3, 7, 30]
 
     private let defaults = UserDefaults.standard
 
@@ -45,6 +52,8 @@ final class AppSettings: ObservableObject {
         static let lineCardSize = "EdgeNotes.lineCardSize"
         static let clipboardHistoryEnabled = "EdgeNotes.clipboardHistoryEnabled"
         static let clipboardCardSize = "EdgeNotes.clipboardCardSize"
+        static let clipboardMaxEntries = "EdgeNotes.clipboardMaxEntries"
+        static let clipboardRetentionDays = "EdgeNotes.clipboardRetentionDays"
     }
 
     private init() {
@@ -70,6 +79,9 @@ final class AppSettings: ObservableObject {
         lineCardSize = d.string(forKey: Keys.lineCardSize).flatMap(LineCardSize.init(rawValue:)) ?? .small
         clipboardHistoryEnabled = d.object(forKey: Keys.clipboardHistoryEnabled) == nil ? true : d.bool(forKey: Keys.clipboardHistoryEnabled)
         clipboardCardSize = d.string(forKey: Keys.clipboardCardSize).flatMap(LineCardSize.init(rawValue:)) ?? .small
+        let maxEntries = d.integer(forKey: Keys.clipboardMaxEntries)
+        clipboardMaxEntries = Self.clipboardEntryOptions.contains(maxEntries) ? maxEntries : 40
+        clipboardRetentionDays = d.object(forKey: Keys.clipboardRetentionDays) == nil ? 7 : max(0, d.integer(forKey: Keys.clipboardRetentionDays))
     }
 
     private static func loadChord(_ d: UserDefaults, _ key: String) -> HotKeyChord? {
@@ -142,6 +154,16 @@ final class AppSettings: ObservableObject {
     func setLineCardSize(_ size: LineCardSize) {
         lineCardSize = size
         defaults.set(size.rawValue, forKey: Keys.lineCardSize)
+    }
+
+    func setClipboardMaxEntries(_ n: Int) {
+        clipboardMaxEntries = n
+        defaults.set(n, forKey: Keys.clipboardMaxEntries)
+    }
+
+    func setClipboardRetentionDays(_ days: Int) {
+        clipboardRetentionDays = max(0, days)
+        defaults.set(clipboardRetentionDays, forKey: Keys.clipboardRetentionDays)
     }
 
     func setClipboardCardSize(_ size: LineCardSize) {

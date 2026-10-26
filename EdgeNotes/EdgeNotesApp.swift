@@ -62,7 +62,21 @@ struct SettingsView: View {
                 get: { settings.clipboardHistoryEnabled },
                 set: { settings.setClipboardHistoryEnabled($0) }
             ))
-            Text(LF("点卡片里的任意一条即可重新复制（文字、图片、文件）。保留最近 %@ 条；密码管理器等标记为隐私的内容不会记录。", ClipboardHistory.maxEntries))
+            Picker(L("保留条数"), selection: Binding(
+                get: { settings.clipboardMaxEntries },
+                set: { settings.setClipboardMaxEntries($0) }
+            )) {
+                ForEach(AppSettings.clipboardEntryOptions, id: \.self) { Text(LF("%@ 条", $0)).tag($0) }
+            }
+            Picker(L("自动清理"), selection: Binding(
+                get: { settings.clipboardRetentionDays },
+                set: { settings.setClipboardRetentionDays($0) }
+            )) {
+                ForEach(AppSettings.clipboardRetentionOptions, id: \.self) { days in
+                    Text(days == 0 ? L("不清理") : LF("%@ 天后", days)).tag(days)
+                }
+            }
+            Text(L("点卡片里的任意一条即可重新复制（文字、图片、文件）。超出条数时最旧的会被挤掉；密码管理器等标记为隐私的内容不会记录。记录只保存在本机。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -127,6 +141,15 @@ struct SettingsView: View {
             ))
             Button(L("检查更新…")) { AppDelegate.current?.updater?.checkForUpdates(nil) }
         }
+        Section(L("支持作者")) {
+            HStack {
+                Text(L("贴边便签免费开源。觉得好用的话，可以请作者喝杯咖啡。"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(L("☕ 支持作者…")) { SponsorWindowController.shared.show() }
+            }
+        }
         Section(L("数据")) {
             HStack {
                 Text("~/Library/Application Support/EdgeNotes/")
@@ -146,6 +169,55 @@ struct SettingsView: View {
     .frame(width: 500)
         }
         .frame(minHeight: 420, idealHeight: 640)
+    }
+}
+
+/// 支持作者：微信扫码打赏
+struct SponsorView: View {
+    var body: some View {
+        VStack(spacing: 14) {
+            Text(L("请作者喝杯咖啡 ☕"))
+                .font(.system(size: 18, weight: .semibold))
+            Text(L("如果贴边便签帮到了你，欢迎用微信扫码随意打赏。你的支持是持续更新的动力。"))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Image("SponsorQR")
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 240, height: 240)
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+                .padding(.vertical, 4)
+            Label(L("微信扫一扫"), systemImage: "qrcode.viewfinder")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color(red: 0.03, green: 0.76, blue: 0.38))
+            Text(L("贴边便签永久免费、开源，打赏完全自愿。"))
+                .font(.system(size: 10.5))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, 24)
+        .frame(width: 340)
+    }
+}
+
+@MainActor
+final class SponsorWindowController {
+    static let shared = SponsorWindowController()
+    private var window: NSWindow?
+
+    func show() {
+        if window == nil {
+            let w = NSWindow(contentViewController: NSHostingController(rootView: SponsorView()))
+            w.title = L("支持作者")
+            w.styleMask = [.titled, .closable]
+            w.isReleasedWhenClosed = false
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 }
 
@@ -289,6 +361,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add(L("便签窗口始终置顶"), #selector(togglePin), on: s.isAlwaysOnTop)
         add(L("速藏正文"), #selector(togglePrivacy), on: s.privacyHideBodies)
         menu.addItem(.separator())
+        add(L("☕ 支持作者…"), #selector(openSponsor))
         add(L("设置…"), #selector(openSettings))
         add(L("检查更新…"), #selector(checkForUpdates))
         let quit = NSMenuItem(title: L("退出"), action: #selector(quit), keyEquivalent: "q")
@@ -315,6 +388,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         updater?.checkForUpdates(nil)
     }
+    @objc private func openSponsor() { SponsorWindowController.shared.show() }
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
     }

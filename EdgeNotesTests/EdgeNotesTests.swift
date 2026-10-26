@@ -282,8 +282,8 @@ final class ClipboardHistoryTests: XCTestCase {
         h.insert(.init(kind: .text, text: "b"))
         h.insert(.init(kind: .text, text: "a"))
         XCTAssertEqual(h.entries.map(\.text), ["a", "b"])
-        for i in 0..<(ClipboardHistory.maxEntries + 5) { h.insert(.init(kind: .text, text: "\(i)")) }
-        XCTAssertEqual(h.entries.count, ClipboardHistory.maxEntries)
+        for i in 0..<(h.limit + 5) { h.insert(.init(kind: .text, text: "\(i)")) }
+        XCTAssertEqual(h.entries.count, h.limit)
     }
 
     func testConcealedContentIsSkipped() {
@@ -448,5 +448,35 @@ final class TiltTests: XCTestCase {
         XCTAssertGreaterThan(tilts.filter { $0 > 0 }.count, 50)
         XCTAssertGreaterThan(tilts.filter { $0 < 0 }.count, 50)
         XCTAssertGreaterThan(Set(tilts.map { Int($0.rounded()) }).count, 8, "角度要分散")
+    }
+}
+
+final class SponsorTests: XCTestCase {
+    func testSponsorQRIsBundled() {
+        XCTAssertNotNil(NSImage(named: "SponsorQR"), "赞赏码图片要打包进 App")
+    }
+}
+
+@MainActor
+final class ClipboardRetentionTests: XCTestCase {
+    func testLoweringLimitTrimsOldest() {
+        let h = ClipboardHistory()
+        h.limit = 100
+        for i in 0..<50 { h.insert(.init(kind: .text, text: "\(i)")) }
+        h.limit = 20
+        h.prune()
+        XCTAssertEqual(h.entries.count, 20)
+        XCTAssertEqual(h.entries.first?.text, "49", "保留最新的")
+    }
+
+    func testEntriesOlderThanRetentionAreRemoved() {
+        let h = ClipboardHistory()
+        h.retentionDays = 7
+        h.insert(.init(kind: .text, text: "old", copiedAt: Date().addingTimeInterval(-8 * 86400)))
+        XCTAssertTrue(h.entries.isEmpty, "超过 7 天的直接清掉")
+        h.insert(.init(kind: .text, text: "new"))
+        h.retentionDays = 0
+        h.insert(.init(kind: .text, text: "ancient", copiedAt: Date().addingTimeInterval(-400 * 86400)))
+        XCTAssertEqual(h.entries.count, 2, "0 = 不清理")
     }
 }

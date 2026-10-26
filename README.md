@@ -70,6 +70,14 @@ TEAM_ID=<TEAMID> scripts/release.sh 0.6.0 6
 每日备份：`…/Backups/`（保留 7 天）；回收站 30 天后自动清空  
 无 iCloud / 无云同步。
 
+## 支持作者 Support
+
+贴边便签免费、开源。如果它帮到了你，欢迎用微信扫码请作者喝杯咖啡（完全自愿）。App 菜单栏里的「☕ 支持作者…」也能打开这个码。
+
+If EdgeNotes helps you, you can tip via WeChat Pay — entirely optional.
+
+<img src="docs/sponsor-wechat.png" alt="微信赞赏码" width="240">
+
 ## 许可 License
 
 MIT — 见 [LICENSE](./LICENSE)。
