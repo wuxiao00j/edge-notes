@@ -19,7 +19,14 @@ final class CloudSync: ObservableObject {
         case error(String)
     }
 
-    @Published private(set) var status: Status = .off
+    @Published private(set) var status: Status = .off {
+        didSet {
+            switch (status, oldValue) {
+            case (.synced, .synced): break
+            default: NSLog("EdgeNotes iCloud: \(status)")
+            }
+        }
+    }
 
     private weak var store: NoteStore?
     private var stateURL: URL?
@@ -54,7 +61,14 @@ final class CloudSync: ObservableObject {
                 try await engine.sendChanges()
                 status = .synced(Date())
             } catch {
-                status = .error(error.localizedDescription)
+                let ck = error as? CKError
+                NSLog("EdgeNotes iCloud: syncNow 失败 code=\(ck?.code.rawValue ?? -1) \(error.localizedDescription)")
+                // 部分失败（冲突、附件已存在等）已经在事件里逐条处理并重试，不算出错
+                if ck?.code == .partialFailure {
+                    status = .synced(Date())
+                } else {
+                    status = .error(error.localizedDescription)
+                }
             }
         }
     }
@@ -202,6 +216,15 @@ final class CloudSync: ObservableObject {
             var retry: [CKSyncEngine.PendingRecordZoneChange] = []
             for failure in e.failedRecordSaves {
                 let id = failure.record.recordID
+                NSLog("EdgeNotes iCloud: 上传失败 \(id.recordName) code=\(failure.error.code.rawValue) \(failure.error.localizedDescription)")
+                // 附件按文件名存、内容不会变：云端已经有了就等于传完了，别再重试
+                if let name = SyncSchema.attachmentFileName(from: id) {
+                    if failure.error.code == .serverRecordChanged {
+                        state.uploadedAttachments.insert(name)
+                        engine?.state.remove(pendingRecordZoneChanges: [.saveRecord(id)])
+                        continue
+                    }
+                }
                 switch failure.error.code {
                 case .serverRecordChanged:
                     // 别的设备先改了：按规则合并，再把合并结果传上去
