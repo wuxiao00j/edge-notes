@@ -53,7 +53,8 @@ fi
 xcodebuild -scheme EdgeNotes -configuration Release -derivedDataPath "$OUT" \
   -clonedSourcePackagesDirPath build/SourcePackages \
   CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" DEVELOPMENT_TEAM="$TEAM_ID" \
-  ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS="--timestamp" "${EXTRA[@]}" -quiet build
+  ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS="--timestamp" \
+  CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO "${EXTRA[@]}" -quiet build
 # Sparkle 里的辅助程序也要用 Developer ID + Hardened Runtime 重签，否则公证不过（Sparkle 官方文档的做法）
 ID="Developer ID Application"
 FW="$APP/Contents/Frameworks/Sparkle.framework"
@@ -64,6 +65,10 @@ codesign -f -s "$ID" -o runtime --timestamp "$FW/Versions/B/Updater.app"
 codesign -f -s "$ID" -o runtime --timestamp "$FW"
 codesign -f -s "$ID" -o runtime --timestamp --preserve-metadata=entitlements "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
+# 调试用的 get-task-allow 授权会让公证被拒，发出去前先拦住
+if codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "get-task-allow"; then
+  echo "签名里带了 get-task-allow（调试授权），公证会被拒，停止发布"; exit 1
+fi
 
 echo "==> 公证（几分钟）"
 rm -f "$ZIP"
