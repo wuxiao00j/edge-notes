@@ -27,6 +27,8 @@ final class NoteStore: ObservableObject {
     private(set) var loadFailure: String?
 
     static let trashRetentionDays = 30
+    /// 欢迎便签固定 id：多台 Mac 首次同步时合并成一条
+    static let welcomeNoteID = UUID(uuidString: "E1C0E000-0000-4000-8000-000000000001")!
     static let dailyBackupsKept = 7
 
     /// 默认数据目录 ~/Library/Application Support/EdgeNotes
@@ -63,6 +65,7 @@ final class NoteStore: ObservableObject {
 
         if !hadExistingData && notes.isEmpty && trash.isEmpty {
             let welcome = Note(
+                id: Self.welcomeNoteID,
                 title: L("欢迎使用贴边便签"),
                 body: L("WELCOME_BODY"),
                 color: .glass,
@@ -413,6 +416,52 @@ final class NoteStore: ObservableObject {
             }
         }
         return names
+    }
+
+    // MARK: - iCloud 同步
+
+    /// 参与同步的全部内容：正常便签 + 回收站（带删除时间）
+    var syncSnapshot: [UUID: SyncedNote] {
+        var out: [UUID: SyncedNote] = [:]
+        for n in notes { out[n.id] = SyncedNote(note: n) }
+        for t in trash { out[t.note.id] = SyncedNote(note: t.note, deletedAt: t.deletedAt) }
+        return out
+    }
+
+    /// 应用来自 iCloud 的内容（新增 / 修改 / 进出回收站），保留只在本机有效的字段；不改修改时间
+    func applySynced(_ synced: SyncedNote, id: UUID) {
+        let existing = notes.first { $0.id == id } ?? trash.first { $0.note.id == id }?.note
+        let note = synced.applied(to: existing ?? Note(id: id))
+        notes.removeAll { $0.id == id }
+        trash.removeAll { $0.note.id == id }
+        if let deletedAt = synced.deletedAt {
+            trash.insert(TrashEntry(note: note, deletedAt: deletedAt), at: 0)
+            if selectedNoteID == id { selectedNoteID = visibleNotes.first?.id }
+            NoteWindowManager.shared.close(noteID: id)
+        } else {
+            notes.insert(note, at: 0)
+        }
+        scheduleSave()
+    }
+
+    /// 别的设备彻底删除了（清出回收站）：本机也直接移除，不再进回收站
+    func removeSynced(id: UUID) {
+        guard notes.contains(where: { $0.id == id }) || trash.contains(where: { $0.note.id == id }) else { return }
+        notes.removeAll { $0.id == id }
+        trash.removeAll { $0.note.id == id }
+        versions.removeAll { $0.noteID == id }
+        if selectedNoteID == id { selectedNoteID = visibleNotes.first?.id }
+        NoteWindowManager.shared.close(noteID: id)
+        scheduleSave()
+    }
+
+    /// 冲突时本机那份另存为新便签
+    @discardableResult
+    func addConflictCopy(_ synced: SyncedNote) -> UUID {
+        let id = UUID()
+        notes.insert(synced.applied(to: Note(id: id)), at: 0)
+        scheduleSave()
+        return id
     }
 
     // MARK: - Versions

@@ -24,3 +24,6 @@ _testshots/
 
 # Keep packaged zip out of source tree if regenerated locally
 # (release assets uploaded via GitHub Releases)
+
+# 描述文件（各人自己下载，不进仓库）
+signing/

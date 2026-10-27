@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		06E323DF307AD36D96B0D563 /* NoteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */; };
+		1134242DCA70DEA4F950DF0E /* SyncModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61B4E30EC812A8C196291076 /* SyncModel.swift */; };
 		14AE61D34EDA4E5B416520F3 /* NoteBodyRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */; };
 		153726F147F684A45D663F5B /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 869A8E8071FAB91C04EC05DA /* InfoPlist.strings */; };
 		2238CA799A31A26662CCFD21 /* MarkdownTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF06525E7B1DAED548037070 /* MarkdownTextView.swift */; };
@@ -23,6 +24,7 @@
 		6EFAA1FD59D81CA258CF9EDC /* NotesWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04BFFEC0A87FC7CF5D8AD6B9 /* NotesWindowController.swift */; };
 		8761FBE50F05FAFD1607371E /* HotKeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */; };
 		88E171736BF715A924708995 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69A5704D1CEF62087CD9F33 /* AppSettings.swift */; };
+		9B758E231BB909B5E571BC70 /* CloudSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A72B60412E37D17853FDF6F /* CloudSync.swift */; };
 		A31C0EB1132B983476204F56 /* StickyChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */; };
 		A53BCDE2928B703AB54C72E5 /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616053B9B8ADF513796189C6 /* Note.swift */; };
 		ABDC1663BDBE8462578BE63E /* Attachments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73975FBA9A1F8658F924882D /* Attachments.swift */; };
@@ -49,9 +51,11 @@
 		0EC837C531073B84EB6850E9 /* NoteBodyRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteBodyRendering.swift; sourceTree = "<group>"; };
 		122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StickyChrome.swift; sourceTree = "<group>"; };
 		28890B7636D0E35CED72261A /* EdgeNotesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeNotesApp.swift; sourceTree = "<group>"; };
+		3A72B60412E37D17853FDF6F /* CloudSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSync.swift; sourceTree = "<group>"; };
 		3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteWindowManager.swift; sourceTree = "<group>"; };
 		4595EDB0B007EF3DA7780BFE /* ClipboardHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardHistory.swift; sourceTree = "<group>"; };
 		616053B9B8ADF513796189C6 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
+		61B4E30EC812A8C196291076 /* SyncModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncModel.swift; sourceTree = "<group>"; };
 		69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassChrome.swift; sourceTree = "<group>"; };
 		6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderManager.swift; sourceTree = "<group>"; };
 		73975FBA9A1F8658F924882D /* Attachments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Attachments.swift; sourceTree = "<group>"; };
@@ -61,6 +65,8 @@
 		7ACA902DEB8A0E80C9876C8E /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7BDCEBE1DBED61C93EB8E578 /* NoteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteStore.swift; sourceTree = "<group>"; };
 		83D8F7F98083ADB2970A21DF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9588AF4873C81DF08ED0B0AF /* EdgeNotes.dev.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdgeNotes.dev.entitlements; sourceTree = "<group>"; };
+		A24CFFBD0678A28609ECAB71 /* EdgeNotes.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EdgeNotes.entitlements; sourceTree = "<group>"; };
 		AE14BF418185187B817F44F4 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		BF06525E7B1DAED548037070 /* MarkdownTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextView.swift; sourceTree = "<group>"; };
 		C37D64C863E241291A6E5F53 /* HotKeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyRecorder.swift; sourceTree = "<group>"; };
@@ -121,7 +127,10 @@
 				7460BAFECA654532B30EBE51 /* ChecklistView.swift */,
 				4595EDB0B007EF3DA7780BFE /* ClipboardHistory.swift */,
 				CF0D89A25A23DE636483AACC /* Clothesline.swift */,
+				3A72B60412E37D17853FDF6F /* CloudSync.swift */,
 				D501332BF4D2276C8649DD5F /* ContentView.swift */,
+				9588AF4873C81DF08ED0B0AF /* EdgeNotes.dev.entitlements */,
+				A24CFFBD0678A28609ECAB71 /* EdgeNotes.entitlements */,
 				28890B7636D0E35CED72261A /* EdgeNotesApp.swift */,
 				69628F8D64DA77D746BEE2F6 /* GlassChrome.swift */,
 				F8192ABD0A0E367CF55A617A /* HotKeyManager.swift */,
@@ -136,6 +145,7 @@
 				3DA8CFBA8B118E3F6D50A37C /* NoteWindowManager.swift */,
 				6DCBC856F0DDB8E852039D2F /* ReminderManager.swift */,
 				122E68EFA34C6431AF2BBEC8 /* StickyChrome.swift */,
+				61B4E30EC812A8C196291076 /* SyncModel.swift */,
 				869A8E8071FAB91C04EC05DA /* InfoPlist.strings */,
 				4AE65A150BECB382C555FE36 /* Localizable.strings */,
 			);
@@ -249,6 +259,7 @@
 				D6995481C52837A4D4A491CC /* ChecklistView.swift in Sources */,
 				3C57891A6D08F21EEBD4B3B7 /* ClipboardHistory.swift in Sources */,
 				4AA8AFCF95EE1784DB4B1A4F /* Clothesline.swift in Sources */,
+				9B758E231BB909B5E571BC70 /* CloudSync.swift in Sources */,
 				38780F55792A0BD5BDE33170 /* ContentView.swift in Sources */,
 				FDE753E86D4E5A3733E282D7 /* EdgeNotesApp.swift in Sources */,
 				6540821F4746B6357EDECD0A /* GlassChrome.swift in Sources */,
@@ -263,6 +274,7 @@
 				6EFAA1FD59D81CA258CF9EDC /* NotesWindowController.swift in Sources */,
 				2D49BE219264D65B5A8926FE /* ReminderManager.swift in Sources */,
 				A31C0EB1132B983476204F56 /* StickyChrome.swift in Sources */,
+				1134242DCA70DEA4F950DF0E /* SyncModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
