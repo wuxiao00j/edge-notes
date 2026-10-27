@@ -480,3 +480,130 @@ final class ClipboardRetentionTests: XCTestCase {
         XCTAssertEqual(h.entries.count, 2, "0 = 不清理")
     }
 }
+
+// MARK: - iCloud 同步（不连网的部分）
+
+import CloudKit
+
+final class SyncModelTests: XCTestCase {
+    private func sample(_ body: String = "正文", updated: TimeInterval = 100) -> SyncedNote {
+        var n = Note(title: "标题", body: body, color: .yellow, tags: ["工作"])
+        n.onLine = true
+        n.linePosition = 0.3
+        n.lineCardSize = "medium"
+        n.updatedAt = Date(timeIntervalSince1970: updated)
+        n.createdAt = Date(timeIntervalSince1970: 1)
+        return SyncedNote(note: n)
+    }
+
+    func testRecordRoundTripIncludingEncryptedFields() {
+        let s = sample()
+        let record = CKRecord(recordType: SyncSchema.noteType, recordID: SyncSchema.noteRecordID(UUID()))
+        s.write(to: record)
+        XCTAssertNil(record["body"], "正文只放在加密字段里")
+        XCTAssertEqual(SyncedNote(record: record), s)
+    }
+
+    func testSystemFieldsRoundTrip() {
+        let record = CKRecord(recordType: SyncSchema.noteType, recordID: SyncSchema.noteRecordID(UUID()))
+        let data = SyncState.systemFields(of: record)
+        XCTAssertEqual(SyncState.record(fromSystemFields: data)?.recordID, record.recordID)
+    }
+
+    func testOnlyOneSideChangedTakesThatSide() {
+        let base = sample()
+        var local = base; local.body = "本机改了"; local.updatedAt = Date(timeIntervalSince1970: 200)
+        var server = base; server.color = "pink"; server.updatedAt = Date(timeIntervalSince1970: 150)
+        let r = SyncMerge.merge(local: local, server: server, base: base)
+        XCTAssertEqual(r.merged.body, "本机改了")
+        XCTAssertEqual(r.merged.color, "pink", "按字段合并，两边的改动都保留")
+        XCTAssertNil(r.conflictCopy)
+    }
+
+    func testBothChangedTextMakesConflictCopy() {
+        let base = sample()
+        var local = base; local.body = "本机版本"
+        var server = base; server.body = "另一台版本"
+        let r = SyncMerge.merge(local: local, server: server, base: base)
+        XCTAssertEqual(r.merged.body, "另一台版本")
+        XCTAssertEqual(r.conflictCopy?.body, "本机版本", "本机写的字不能丢")
+        XCTAssertTrue(r.conflictCopy?.title.contains(L("（冲突副本）")) ?? false)
+    }
+
+    func testBothChangedSameFieldNewerWins() {
+        let base = sample()
+        var local = base; local.linePosition = 0.9; local.updatedAt = Date(timeIntervalSince1970: 300)
+        var server = base; server.linePosition = 0.1; server.updatedAt = Date(timeIntervalSince1970: 200)
+        XCTAssertEqual(SyncMerge.merge(local: local, server: server, base: base).merged.linePosition, 0.9)
+    }
+
+    func testEditWinsOverDelete() {
+        let base = sample()
+        var local = base; local.body = "刚写的"
+        var server = base; server.deletedAt = Date()
+        let r = SyncMerge.merge(local: local, server: server, base: base)
+        XCTAssertNil(r.merged.deletedAt, "有人在改，就不删")
+        XCTAssertEqual(r.merged.body, "刚写的")
+    }
+
+    func testPlainDeleteIsAccepted() {
+        let base = sample()
+        var server = base; server.deletedAt = Date()
+        XCTAssertNotNil(SyncMerge.merge(local: base, server: server, base: base).merged.deletedAt)
+    }
+
+    func testBothChangedTagsAreUnioned() {
+        let base = sample()
+        var local = base; local.tags = ["工作", "本机"]
+        var server = base; server.tags = ["工作", "云端"]
+        XCTAssertEqual(Set(SyncMerge.merge(local: local, server: server, base: base).merged.tags), ["工作", "本机", "云端"])
+    }
+}
+
+@MainActor
+final class SyncStoreTests: TempDirTestCase {
+    func testSnapshotCoversNotesAndTrash() {
+        let store = NoteStore(directory: dir)
+        let a = store.addNote(body: "a")
+        let b = store.addNote(body: "b")
+        store.softDelete(id: b.id)
+        XCTAssertNil(store.syncSnapshot[a.id]?.deletedAt)
+        XCTAssertNotNil(store.syncSnapshot[b.id]?.deletedAt)
+    }
+
+    func testApplySyncedMovesBetweenNotesAndTrashKeepingLocalFields() throws {
+        let store = NoteStore(directory: dir)
+        let file = dir.appendingPathComponent("f.txt")
+        try "x".write(to: file, atomically: true, encoding: .utf8)
+        let note = store.addLineFile(file)
+        var synced = store.syncSnapshot[note.id]!
+        synced.deletedAt = Date()
+        store.applySynced(synced, id: note.id)
+        XCTAssertNil(store.note(id: note.id))
+        XCTAssertEqual(store.trash.first?.note.id, note.id)
+        XCTAssertNotNil(store.trash.first?.note.fileBookmark, "只在本机有效的书签要保留")
+        synced.deletedAt = nil
+        synced.body = "云端改过"
+        store.applySynced(synced, id: note.id)
+        XCTAssertEqual(store.note(id: note.id)?.body, "云端改过")
+        XCTAssertTrue(store.trash.isEmpty)
+    }
+
+    func testRemoveSyncedPurgesWithoutTrash() {
+        let store = NoteStore(directory: dir)
+        let n = store.addNote(body: "x")
+        store.removeSynced(id: n.id)
+        XCTAssertNil(store.note(id: n.id))
+        XCTAssertFalse(store.trash.contains { $0.note.id == n.id })
+    }
+
+    func testWelcomeNoteHasFixedID() {
+        let store = NoteStore(directory: dir)
+        XCTAssertEqual(store.notes.first?.id, NoteStore.welcomeNoteID)
+    }
+
+    func testAttachmentNamesFromBody() {
+        let s = SyncedNote(note: Note(body: "![](attachments/a.png)\n文字 ![x](attachments/b.jpg)"))
+        XCTAssertEqual(CloudSync.attachmentNames(in: s), ["a.png", "b.jpg"])
+    }
+}

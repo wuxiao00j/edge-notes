@@ -274,3 +274,14 @@
 "不清理" = "Never";
 "%@ 天后" = "After %@ days";
 "点卡片里的任意一条即可重新复制（文字、图片、文件）。超出条数时最旧的会被挤掉；密码管理器等标记为隐私的内容不会记录。记录只保存在本机。" = "Click any entry on the card to copy it again (text, images, files). The oldest entries are dropped when the limit is reached; content marked private by password managers is never recorded. History stays on this Mac.";
+"未开启。本机数据和每日备份不受影响。" = "Off. Local data and daily backups are unaffected.";
+"这个版本没有启用 iCloud（开发版或旧版）。请安装 GitHub 上的正式版。" = "iCloud isn't enabled in this build (development or older build). Install the release from GitHub.";
+"正在同步…" = "Syncing…";
+"上次同步：%@" = "Last synced: %@";
+"同步出错：%@" = "Sync error: %@";
+"iCloud 同步（测试版）" = "iCloud Sync (Beta)";
+"通过 iCloud 在你的多台 Mac 间同步便签" = "Sync notes across your Macs with iCloud";
+"立即同步" = "Sync Now";
+"同步便签、回收站和图片；标题和正文端到端加密。不同步历史版本、剪贴板历史和设置。挂绳上的文件只同步卡片，文件本身不上传。两台 Mac 同时改同一条时会保留一份「冲突副本」，不会丢字。" = "Syncs notes, trash and images; titles and text are end-to-end encrypted. Version history, clipboard history and settings stay local. File cards sync the card only, not the file. If two Macs edit the same note at once, a \"conflict copy\" is kept so nothing is lost.";
+"iCloud 账号已退出或更换，同步已关闭。本机便签都还在，重新打开同步即可。" = "Your iCloud account signed out or changed, so sync was turned off. Your notes on this Mac are untouched; turn sync back on to continue.";
+"（冲突副本）" = " (conflict copy)";

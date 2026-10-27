@@ -14,6 +14,8 @@ VERSION="${1:?用法: scripts/release.sh <版本号> <构建号>}"
 BUILD="${2:?用法: scripts/release.sh <版本号> <构建号>}"
 TEAM_ID="${TEAM_ID:?请先 export TEAM_ID=<你的 Team ID>}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-edgenotes}"
+# iCloud 同步需要的 Developer ID 描述文件（没有就照常发布，只是这个版本不能开 iCloud 同步）
+PROFILE="${PROFILE:-signing/EdgeNotes_DeveloperID.provisionprofile}"
 REPO="wuxiao00j/edge-notes"
 
 cd "$(dirname "$0")/.."
@@ -37,10 +39,21 @@ xcodebuild test -scheme EdgeNotes -derivedDataPath build -quiet
 
 echo "==> 构建（Developer ID + Hardened Runtime）"
 rm -rf "$OUT"
+EXTRA=()
+if [ -f "$PROFILE" ]; then
+  # 装进 Xcode 的描述文件目录，按 UUID 引用，并带上 iCloud 授权
+  UUID_=$(security cms -D -i "$PROFILE" | plutil -extract UUID raw -)
+  mkdir -p "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+  cp "$PROFILE" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/$UUID_.provisionprofile"
+  EXTRA=(CODE_SIGN_ENTITLEMENTS=EdgeNotes/EdgeNotes.entitlements PROVISIONING_PROFILE_SPECIFIER="$UUID_")
+  echo "    带 iCloud 授权（描述文件 $UUID_）"
+else
+  echo "    没找到 $PROFILE：这个版本不带 iCloud 同步"
+fi
 xcodebuild -scheme EdgeNotes -configuration Release -derivedDataPath "$OUT" \
   -clonedSourcePackagesDirPath build/SourcePackages \
   CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" DEVELOPMENT_TEAM="$TEAM_ID" \
-  ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS="--timestamp" -quiet build
+  ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS="--timestamp" "${EXTRA[@]}" -quiet build
 # Sparkle 里的辅助程序也要用 Developer ID + Hardened Runtime 重签，否则公证不过（Sparkle 官方文档的做法）
 ID="Developer ID Application"
 FW="$APP/Contents/Frameworks/Sparkle.framework"
@@ -49,7 +62,7 @@ codesign -f -s "$ID" -o runtime --timestamp --preserve-metadata=entitlements "$F
 codesign -f -s "$ID" -o runtime --timestamp "$FW/Versions/B/Autoupdate"
 codesign -f -s "$ID" -o runtime --timestamp "$FW/Versions/B/Updater.app"
 codesign -f -s "$ID" -o runtime --timestamp "$FW"
-codesign -f -s "$ID" -o runtime --timestamp "$APP"
+codesign -f -s "$ID" -o runtime --timestamp --preserve-metadata=entitlements "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
 echo "==> 公证（几分钟）"

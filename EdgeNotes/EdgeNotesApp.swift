@@ -17,6 +17,17 @@ struct EdgeNotesApp: App {
 /// 设置界面（菜单栏「设置…」打开独立窗口；⌘, 走 Settings 场景）
 struct SettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var sync = CloudSync.shared
+
+    private var syncStatusText: String {
+        switch sync.status {
+        case .off: return L("未开启。本机数据和每日备份不受影响。")
+        case .unavailable: return L("这个版本没有启用 iCloud（开发版或旧版）。请安装 GitHub 上的正式版。")
+        case .syncing: return L("正在同步…")
+        case .synced(let date): return LF("上次同步：%@", date.formatted(date: .abbreviated, time: .shortened))
+        case .error(let message): return LF("同步出错：%@", message)
+        }
+    }
 
     var body: some View {
     ScrollView {
@@ -54,6 +65,26 @@ struct SettingsView: View {
                 set: { settings.setLineShowInFullScreen($0) }
             ))
             Text(L("鼠标移到菜单栏正下方停一下，绳子就会放下来并置顶；把图片、文字、链接或文件拖到绳上即可挂起（文件只记位置，不复制）；左右拖动换位置，往下拖出来可放进其它 App；点夹子取下。单击图片看大图，单击文字便签进入编辑。"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        Section(L("iCloud 同步（测试版）")) {
+            Toggle(L("通过 iCloud 在你的多台 Mac 间同步便签"), isOn: Binding(
+                get: { settings.iCloudSyncEnabled },
+                set: { settings.setICloudSyncEnabled($0) }
+            ))
+            .disabled(!CloudSync.isAvailable)
+            HStack {
+                Text(syncStatusText)
+                    .font(.caption)
+                    .foregroundStyle({ if case .error = sync.status { return Color.red } else { return Color.secondary } }())
+                Spacer()
+                if settings.iCloudSyncEnabled && CloudSync.isAvailable {
+                    Button(L("立即同步")) { sync.syncNow() }
+                        .disabled(sync.status == .syncing)
+                }
+            }
+            Text(L("同步便签、回收站和图片；标题和正文端到端加密。不同步历史版本、剪贴板历史和设置。挂绳上的文件只同步卡片，文件本身不上传。两台 Mac 同时改同一条时会保留一份「冲突副本」，不会丢字。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -283,6 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
 
         ClipboardHistory.shared.start(dataDirectory: URL(fileURLWithPath: store.dataDirectoryPath))
+        CloudSync.shared.configure(store: store, dataDirectory: URL(fileURLWithPath: store.dataDirectoryPath))
         ClotheslineController.shared.install(store: store)
 
         setupStatusItem()

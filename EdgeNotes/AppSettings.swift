@@ -30,6 +30,8 @@ final class AppSettings: ObservableObject {
     @Published var clipboardMaxEntries: Int
     /// 剪贴板历史超过几天自动清理；0 = 不清理
     @Published var clipboardRetentionDays: Int
+    /// iCloud 同步（测试版），默认关闭
+    @Published var iCloudSyncEnabled: Bool
 
     static let clipboardEntryOptions = [20, 40, 100, 200]
     static let clipboardRetentionOptions = [0, 1, 3, 7, 30]
@@ -54,6 +56,7 @@ final class AppSettings: ObservableObject {
         static let clipboardCardSize = "EdgeNotes.clipboardCardSize"
         static let clipboardMaxEntries = "EdgeNotes.clipboardMaxEntries"
         static let clipboardRetentionDays = "EdgeNotes.clipboardRetentionDays"
+        static let iCloudSyncEnabled = "EdgeNotes.iCloudSyncEnabled"
     }
 
     private init() {
@@ -82,6 +85,7 @@ final class AppSettings: ObservableObject {
         let maxEntries = d.integer(forKey: Keys.clipboardMaxEntries)
         clipboardMaxEntries = Self.clipboardEntryOptions.contains(maxEntries) ? maxEntries : 40
         clipboardRetentionDays = d.object(forKey: Keys.clipboardRetentionDays) == nil ? 7 : max(0, d.integer(forKey: Keys.clipboardRetentionDays))
+        iCloudSyncEnabled = d.bool(forKey: Keys.iCloudSyncEnabled)
     }
 
     private static func loadChord(_ d: UserDefaults, _ key: String) -> HotKeyChord? {
@@ -154,6 +158,11 @@ final class AppSettings: ObservableObject {
     func setLineCardSize(_ size: LineCardSize) {
         lineCardSize = size
         defaults.set(size.rawValue, forKey: Keys.lineCardSize)
+    }
+
+    func setICloudSyncEnabled(_ on: Bool) {
+        iCloudSyncEnabled = on
+        defaults.set(on, forKey: Keys.iCloudSyncEnabled)
     }
 
     func setClipboardMaxEntries(_ n: Int) {
